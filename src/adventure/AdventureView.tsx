@@ -41,6 +41,17 @@ const TOTAL_BATTLE_NPCS = Object.values(SCENES).reduce(
   (n, s) => n + s.npcs.filter((x) => x.role === "battle").length,
   0
 );
+const MYTHOS_REQUIRED_NPC_IDS = SCENES.office.npcs
+  .filter((x) => x.role === "battle")
+  .map((x) => x.id);
+const MYTHOS_UNLOCK_LINES = [
+  "Every meetup trainer has seen what your modelmon can do.",
+  "(Mythical added to your Pokedex as #151: Claude Mythos.)",
+];
+const OAKLAND_WARNING_LINE =
+  "Be careful, that direction leads to Oakland.";
+const TREASURE_ISLAND_WARNING_LINE =
+  "That leads to Treasure Island. The only treasure you'll find there is solitude.";
 
 interface Props {
   onExit: () => void;
@@ -59,6 +70,11 @@ export function AdventureView({ onExit }: Props) {
   const adventure = useAdventure();
   const legendary = useLegendary();
   const { save, partner } = adventure;
+  const mythosUnlocked = legendary.isUnlocked("mythos");
+  const mythosRequirementMet = useMemo(
+    () => hasEngagedAllMythosTrainers(save.engaged, undefined, save.defeated),
+    [save.defeated, save.engaged]
+  );
 
   // First-time entry: show partner picker if there's no saved partner
   const [pickerOpen, setPickerOpen] = useState<boolean>(!partner);
@@ -95,6 +111,14 @@ export function AdventureView({ onExit }: Props) {
     });
   }, [partner]);
 
+  // Mythos is awarded for showing up to every office trainer, win or lose.
+  // This also fixes existing saves that already met the requirement.
+  useEffect(() => {
+    if (!battle && !mythosUnlocked && mythosRequirementMet) {
+      legendary.unlockDirect("mythos");
+    }
+  }, [battle, legendary, mythosRequirementMet, mythosUnlocked]);
+
   /* ─── Scene transitions ───────────────────────────────────────── */
 
   const transitionTo = useCallback(
@@ -118,7 +142,19 @@ export function AdventureView({ onExit }: Props) {
       setFacing(newFacing);
       const tx = pos.x + dx;
       const ty = pos.y + dy;
-      if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) return;
+      if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) {
+        const currentTile = TILES[pos.y]?.[pos.x];
+        if (scene.id === "pier" && dx > 0 && currentTile === "water") {
+          setDialogue({ lines: [OAKLAND_WARNING_LINE], kind: "system" });
+        }
+        if (scene.id === "pier" && dy < 0 && currentTile === "water") {
+          setDialogue({
+            lines: [TREASURE_ISLAND_WARNING_LINE],
+            kind: "system",
+          });
+        }
+        return;
+      }
       const tile = TILES[ty][tx];
       const onFoot = WALKABLE.has(tile);
       const onKayak = save.hasKayak && KAYAK_WALKABLE.has(tile);
@@ -433,6 +469,11 @@ export function AdventureView({ onExit }: Props) {
     if (!battle) return;
     const { npc } = battle;
     const reward = npc.reward ?? 0;
+    const unlocksMythos =
+      !mythosUnlocked &&
+      hasEngagedAllMythosTrainers(save.engaged, npc.id, save.defeated);
+    if (unlocksMythos) legendary.unlockDirect("mythos");
+
     adventure.applyBattleResult({
       won: result.won,
       npcId: npc.id,
@@ -446,7 +487,13 @@ export function AdventureView({ onExit }: Props) {
       // Black out → respawn at the current scene's entrance
       setPos(scene.spawn);
       setFacing("up");
-      setDialogue({ lines: BLACKOUT_LINES, kind: "system" });
+      setDialogue({
+        lines: [
+          ...BLACKOUT_LINES,
+          ...(unlocksMythos ? MYTHOS_UNLOCK_LINES : []),
+        ],
+        kind: "system",
+      });
       return;
     }
 
@@ -461,12 +508,19 @@ export function AdventureView({ onExit }: Props) {
           : `(No reward this time.)`;
       const tail = npc.postWin ?? ["..."];
       setDialogue({
-        lines: [...tail, earnedLine],
+        lines: [
+          ...tail,
+          earnedLine,
+          ...(unlocksMythos ? MYTHOS_UNLOCK_LINES : []),
+        ],
         kind: "system",
       });
     } else {
       setDialogue({
-        lines: npc.postLoss ?? ["..."],
+        lines: [
+          ...(npc.postLoss ?? ["..."]),
+          ...(unlocksMythos ? MYTHOS_UNLOCK_LINES : []),
+        ],
         kind: "system",
       });
     }
@@ -1427,6 +1481,16 @@ function FloorLabels({ sceneId }: { sceneId: SceneId }) {
 }
 
 /* ─── Dialogue ────────────────────────────────────────────────────── */
+
+function hasEngagedAllMythosTrainers(
+  engaged: string[],
+  currentNpcId?: string,
+  defeated: string[] = []
+): boolean {
+  const seen = new Set([...engaged, ...defeated]);
+  if (currentNpcId) seen.add(currentNpcId);
+  return MYTHOS_REQUIRED_NPC_IDS.every((id) => seen.has(id));
+}
 
 type DialogueKind =
   | "system"

@@ -438,6 +438,40 @@ export const sp_memoryno_world: Sprite = {
   }),
 };
 
+/* ─── Open Claw — a red lobster lurking off the bottom-right pier ──
+ *  The lobster is, of course, the autonomous coding agent that ate
+ *  Fishing Frank's startup, reincarnated. Top-down view: two big
+ *  pincer claws raised, antennae out front, segmented tail flaring at
+ *  the bottom. Drawn off-center to read clearly even on a water tile. */
+
+export const sp_lobster: Sprite = {
+  grid: [
+    "................",
+    "....A....A......",
+    "...0AA....AA0...",
+    "..0RRR0..0RRR0..",
+    "..0R.R0..0R.R0..",
+    "..0RRR0..0RRR0..",
+    "...0RRR..RRR0...",
+    "....0RRRRRR0....",
+    "....0RkRRkR0....",
+    "....0RSSSSR0....",
+    "....0RRRRRR0....",
+    ".....0RRRR0.....",
+    "......0RR0......",
+    ".....0R..R0.....",
+    "....0R0..0R0....",
+    "................",
+  ],
+  palette: {
+    "0": "#7f1d1d",
+    R: "#dc2626",
+    S: "#fb923c",
+    A: "#fca5a5",
+    k: "#0c0e14",
+  },
+};
+
 /* ─── In-world Mac Mini XL — looks like a small unmarked moving truck,
  *     because that's basically what a truck-sized Mac mini looks like. ─── */
 
@@ -483,6 +517,7 @@ export const NPC_SPRITES: Record<string, Sprite> = {
   "pier-tourist": sp_tourist,
   "pier-influencer": sp_influencer,
   "pier-doomer": sp_doomer,
+  "openclaw-lobster": sp_lobster,
   // Mac Mini Mike reuses the salesman silhouette; Fishing Frank reuses
   // the kayak guy (similar washed-up-by-the-bay vibe).
   "macmini-mike": sp_brett,

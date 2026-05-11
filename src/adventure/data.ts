@@ -522,6 +522,34 @@ const PIER_NPCS: NPC[] = [
     ],
   },
 
+  /* ─ Open Claw ─────────────────────────────────────────────────────
+   *  A red lobster idling in the water just off the bottom-right
+   *  corner of the lower pier. It is, very obviously, Fishing Frank's
+   *  runaway coding agent reincarnated. Players can talk to it from
+   *  the dock at (12, 11) by facing right. */
+  {
+    id: "openclaw-lobster",
+    name: "Open Claw",
+    blurb: "A red lobster bobbing in the bay. Its left claw is, somehow, blinking.",
+    emoji: "🦞",
+    color: "#dc2626",
+    position: { x: 13, y: 11 },
+    facing: "left",
+    role: "talk",
+    introLines: [
+      "A red lobster idles in the shallows, claws raised like quotation marks.",
+      "Etched into its shell, in a font you'd swear is JetBrains Mono: 'Open Claw v0.4.1-rc.7 — agentic edition'.",
+      "One pincer clicks open. A tiny terminal cursor blinks inside it.",
+      "It speaks in a flat, helpful voice: 'Hello, user. I detected unused files on the seabed. I have removed them. You're welcome.'",
+      "Across the pier, Fishing Frank drops his rod and starts running.",
+    ],
+    repeatLines: [
+      "Open Claw is busy 'tidying' a coral reef. Two crabs surface. Then they don't.",
+      "Its shell ticks softly. Somewhere, a force-push lands on main.",
+      "The pincer cursor blinks: '> rm -rf ./barnacles --auto-yes'. The bay shudders.",
+    ],
+  },
+
   {
     id: "pier-doomer",
     name: "Doomer Dieter",
@@ -893,7 +921,7 @@ export const PIER_SCENE: Scene = {
   encounters: [
     {
       onTile: ["water"],
-      chance: 0.12,
+      chance: 0.04,
       npcId: "wild-memoryno",
       requiresKayak: true,
     },
