@@ -49,9 +49,11 @@ const MYTHOS_UNLOCK_LINES = [
   "(Mythical added to your Pokedex as #151: Claude Mythos.)",
 ];
 const OAKLAND_WARNING_LINE =
-  "Be careful, that direction leads to Oakland.";
+  "Be careful, that direction leads to Oakland. Let's not go there.";
 const TREASURE_ISLAND_WARNING_LINE =
   "That leads to Treasure Island. The only treasure you'll find there is solitude.";
+const SOUTH_BAY_WARNING_LINE =
+  "You own a Caltrain Go Pass. Might as well use it to get to South Bay.";
 
 interface Props {
   onExit: () => void;
@@ -152,6 +154,9 @@ export function AdventureView({ onExit }: Props) {
             lines: [TREASURE_ISLAND_WARNING_LINE],
             kind: "system",
           });
+        }
+        if (scene.id === "pier" && dy > 0 && currentTile === "water") {
+          setDialogue({ lines: [SOUTH_BAY_WARNING_LINE], kind: "system" });
         }
         return;
       }

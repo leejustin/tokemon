@@ -29,6 +29,7 @@ const LS_BATTLES = "tokemon.battleCount";
 const LS_UNLOCKED_PREFIX = "tokemon.legendary.";
 // Legacy key from the v1 release (only ever held Mythos).
 const LS_LEGACY_MYTHOS = "tokemon.mythos.unlocked";
+const LEGENDARY_CHANGE_EVENT = "tokemon:legendary-change";
 
 const MAX_STAT = 255;
 
@@ -364,6 +365,26 @@ function readUnlocked(id: LegendaryId): boolean {
   return safeRead(unlockedKey(id)) === "1";
 }
 
+function readUnlockedState(): Record<LegendaryId, boolean> {
+  return {
+    mythos: readUnlocked("mythos"),
+    colossus: readUnlocked("colossus"),
+    hang: readUnlocked("hang"),
+    memoryno: readUnlocked("memoryno"),
+    truckanon: readUnlocked("truckanon"),
+  };
+}
+
+function emitLegendaryChange(): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(LEGENDARY_CHANGE_EVENT));
+    }
+  } catch {
+    /* */
+  }
+}
+
 /* ─── React hook ──────────────────────────────────────────────────── */
 
 export interface LegendaryState {
@@ -387,37 +408,38 @@ export interface LegendaryState {
 
 export function useLegendary(): LegendaryState {
   const [battles, setBattles] = useState<number>(() => readBattleCount());
-  const [unlocked, setUnlocked] = useState<Record<LegendaryId, boolean>>(() => ({
-    mythos: readUnlocked("mythos"),
-    colossus: readUnlocked("colossus"),
-    hang: readUnlocked("hang"),
-    memoryno: readUnlocked("memoryno"),
-    truckanon: readUnlocked("truckanon"),
-  }));
+  const [unlocked, setUnlocked] =
+    useState<Record<LegendaryId, boolean>>(readUnlockedState);
 
-  // Cross-tab sync — if you unlock in another tab, this one notices.
+  // Cross-tab + same-tab sync. The browser's `storage` event only fires in
+  // other tabs, so local unlocks also emit a tiny custom event.
   useEffect(() => {
+    function refresh() {
+      setBattles(readBattleCount());
+      setUnlocked(readUnlockedState());
+    }
     function onStorage(e: StorageEvent) {
-      if (!e.key) return;
-      if (e.key === LS_BATTLES) setBattles(readBattleCount());
-      if (e.key.startsWith(LS_UNLOCKED_PREFIX) || e.key === LS_LEGACY_MYTHOS) {
-        setUnlocked({
-          mythos: readUnlocked("mythos"),
-          colossus: readUnlocked("colossus"),
-          hang: readUnlocked("hang"),
-          memoryno: readUnlocked("memoryno"),
-          truckanon: readUnlocked("truckanon"),
-        });
+      if (
+        e.key === LS_BATTLES ||
+        e.key === LS_LEGACY_MYTHOS ||
+        e.key?.startsWith(LS_UNLOCKED_PREFIX)
+      ) {
+        refresh();
       }
     }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(LEGENDARY_CHANGE_EVENT, refresh);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(LEGENDARY_CHANGE_EVENT, refresh);
+    };
   }, []);
 
   const recordBattle = useCallback(() => {
     setBattles((prev) => {
       const next = prev + 1;
       safeWrite(LS_BATTLES, String(next));
+      emitLegendaryChange();
       return next;
     });
   }, []);
@@ -441,6 +463,7 @@ export function useLegendary(): LegendaryState {
       if (battles < def.requiredBattles) return false;
       safeWrite(unlockedKey(id), "1");
       setUnlocked((u) => ({ ...u, [id]: true }));
+      emitLegendaryChange();
       return true;
     },
     [battles]
@@ -449,6 +472,7 @@ export function useLegendary(): LegendaryState {
   const unlockDirect = useCallback((id: LegendaryId) => {
     safeWrite(unlockedKey(id), "1");
     setUnlocked((u) => ({ ...u, [id]: true }));
+    emitLegendaryChange();
   }, []);
 
   const reset = useCallback(() => {
@@ -467,6 +491,7 @@ export function useLegendary(): LegendaryState {
       memoryno: false,
       truckanon: false,
     });
+    emitLegendaryChange();
   }, []);
 
   const unlockedModels: AIModel[] = LEGENDARIES.filter((l) => unlocked[l.id]).map(
