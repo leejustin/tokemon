@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Tokemon App Preview</title>
+  <desc id="desc">An original AI model battle icon with a glowing model core and neural nodes.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="40" x2="1080" y2="590" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="0.45" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#030712"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="46%" r="54%">
+      <stop offset="0" stop-color="#f5d76e" stop-opacity="0.34"/>
+      <stop offset="0.52" stop-color="#ef4444" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="core" x1="390" y1="150" x2="760" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="0.5" stop-color="#ef4444"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="40" y="40" width="1120" height="550" rx="42" fill="#07090d" stroke="#1f2937" stroke-width="4"/>
+  <circle cx="520" cy="315" r="280" fill="url(#halo)"/>
+
+  <g opacity="0.28" stroke="#38bdf8" stroke-width="4">
+    <path d="M250 170h520M250 460h520M320 110v410M700 110v410"/>
+    <path d="M250 170l520 290M770 170L250 460"/>
+  </g>
+
+  <g transform="translate(265 110)">
+    <path d="M130 30h320l105 105v365H130z" fill="#0b1020" stroke="#334155" stroke-width="18"/>
+    <path d="M450 30v105h105" fill="none" stroke="#64748b" stroke-width="18" stroke-linejoin="round"/>
+    <path d="M130 30h320l105 105v365H130z" fill="url(#core)" opacity="0.16"/>
+    <path d="M196 256l76 58-76 58" fill="none" stroke="#67e8f9" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M330 378h136" stroke="#fde68a" stroke-width="34" stroke-linecap="round"/>
+
+    <circle cx="70" cy="70" r="38" fill="#ef4444" filter="url(#glow)"/>
+    <circle cx="555" cy="74" r="30" fill="#fde68a" filter="url(#glow)"/>
+    <circle cx="570" cy="500" r="42" fill="#a78bfa" filter="url(#glow)"/>
+    <circle cx="70" cy="500" r="30" fill="#38bdf8" filter="url(#glow)"/>
+    <path d="M70 70l485 4M555 74l15 426M570 500H70M70 500V70" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="9"/>
+  </g>
+
+  <g transform="translate(775 178)">
+    <text x="0" y="0" fill="#fde68a" font-family="Orbitron, ui-sans-serif, system-ui" font-size="62" font-weight="900" letter-spacing="6">
+      TOKEMON
+    </text>
+    <text x="3" y="58" fill="#94a3b8" font-family="JetBrains Mono, ui-monospace, monospace" font-size="24" letter-spacing="4">
+      AI MODEL DEX
+    </text>
+    <path d="M3 94h286" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+    <text x="3" y="156" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="34" font-weight="700">
+      Compare stats.
+    </text>
+    <text x="3" y="204" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="34" font-weight="700">
+      Battle models.
+    </text>
+    <text x="3" y="252" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="34" font-weight="700">
+      Burn tokens.
+    </text>
+  </g>
+</svg>

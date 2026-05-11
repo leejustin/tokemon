@@ -359,13 +359,36 @@ function Header({
 
 function Logo() {
   return (
-    <div className="relative w-8 h-8 rounded-full overflow-hidden ring-1 ring-black/60 shadow-md">
-      <div className="absolute inset-0 bg-gradient-to-b from-pokered-500 to-pokered-700" />
-      <div className="absolute bottom-0 inset-x-0 h-1/2 bg-white" />
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-black" />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white ring-[1.5px] ring-black" />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-ink-200 ring-[0.5px] ring-ink-500" />
-    </div>
+    <svg
+      className="w-8 h-8 rounded-lg shadow-md ring-1 ring-black/60"
+      viewBox="0 0 64 64"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="logo-bg" x1="10" y1="6" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#1e293b" />
+          <stop offset="0.45" stopColor="#0f172a" />
+          <stop offset="1" stopColor="#030712" />
+        </linearGradient>
+        <linearGradient id="logo-core" x1="18" y1="14" x2="48" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#fde68a" />
+          <stop offset="0.5" stopColor="#ef4444" />
+          <stop offset="1" stopColor="#a78bfa" />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#logo-bg)" />
+      <path d="M17 22h30M17 42h30M22 17v30M42 17v30" stroke="#38bdf8" strokeOpacity="0.14" strokeWidth="2" />
+      <path d="M20 18h24l8 8v20H20z" fill="#07090d" stroke="#334155" strokeWidth="3" />
+      <path d="M44 18v8h8" fill="none" stroke="#64748b" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M24 31l5 4-5 4" fill="none" stroke="#67e8f9" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M34 40h10" stroke="#fde68a" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx="17" cy="18" r="4" fill="#ef4444" />
+      <circle cx="47" cy="20" r="3" fill="#fde68a" />
+      <circle cx="49" cy="46" r="4" fill="#a78bfa" />
+      <circle cx="17" cy="45" r="3" fill="#38bdf8" />
+      <path d="M17 18l30 2M47 20l2 26M49 46l-32-1M17 45V18" stroke="#94a3b8" strokeOpacity="0.45" strokeWidth="1.5" />
+      <path d="M20 18h24l8 8v20H20z" fill="url(#logo-core)" opacity="0.18" />
+    </svg>
   );
 }
 
