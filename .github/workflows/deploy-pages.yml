@@ -5,14 +5,9 @@
 #   2. Settings → Actions → General → Workflow permissions:
 #      enable "Read and write permissions" (needed for Pages deployment)
 #
-# Default URL: https://<owner>.github.io/<repo>/
-# The workflow sets VITE_BASE_PATH=/<repo>/ so asset URLs resolve.
-#
-# Custom domain later:
-#   1. Add a one-line file: public/CNAME  (contents: your.domain.com)
-#   2. Settings → Pages → Custom domain → enter the same hostname
-#   3. In THIS workflow, set env VITE_BASE_PATH: "/"  (site is served at apex)
-#   4. Follow GitHub's DNS instructions for your registrar
+# Custom domain: https://tokemonlabs.com
+# The workflow sets VITE_BASE_PATH=/ because the site is served at the
+# domain root. `public/CNAME` tells GitHub Pages which hostname to use.
 
 name: Deploy to GitHub Pages
 
@@ -47,8 +42,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Project Pages lives under /<repo>/ ; override with "/" when using a custom apex domain
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          # Custom-domain Pages is served at the domain root.
+          VITE_BASE_PATH: "/"
 
       - uses: actions/upload-pages-artifact@v3
         with:
