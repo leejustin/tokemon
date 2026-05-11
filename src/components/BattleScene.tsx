@@ -62,6 +62,10 @@ const COLOSSUS_BURN_MULT = 100;
 const HANG_CHANCE = 0.25;
 const MAX_ATTACK_DROPS = 3;
 const ATTACK_DROP_MULT = 0.15;
+/** Each side can use heal moves (Community Patch, Recover Cache, etc.) at
+ *  most this many times per battle. Stops the AI from spamming "Community
+ *  Patch" forever and stalling the match. Pokemon-style PP, basically. */
+const MAX_HEALS_PER_SIDE = 3;
 
 /**
  * Pokemon-style battle scene with two modes:
@@ -142,6 +146,13 @@ export function BattleScene({
 
   /** Sum of $ burned by both sides — debited from adventure credits once. */
   const totalBurned = burned.left + burned.right;
+
+  /** Per-side heal-move usage counter. We hard-cap heals at MAX_HEALS_PER_SIDE
+   *  so the AI can't loop "Community Patch" forever and stall the match. */
+  const healsUsedRef = useRef<{ left: number; right: number }>({
+    left: 0,
+    right: 0,
+  });
 
   const leftPower = teamPower(left);
   const rightPower = teamPower(right);
@@ -234,6 +245,10 @@ export function BattleScene({
       );
 
       if (move.effect === "heal") {
+        healsUsedRef.current = {
+          ...healsUsedRef.current,
+          [attackerSideArg]: healsUsedRef.current[attackerSideArg] + 1,
+        };
         const currentAttackerHP =
           attackerSideArg === "left" ? leftHPRef.current : rightHPRef.current;
         const healedHP = Math.min(HP_PER_SIDE, currentAttackerHP + move.power);
@@ -448,8 +463,15 @@ export function BattleScene({
         // Decide attacker side: alternate to keep it lively
         const attacker: Side = swingCount % 2 === 0 ? "left" : "right";
         const member = activeMember(attacker);
-        const moves = moveSetFor(member);
-        const move = moves[Math.floor(Math.random() * moves.length)];
+        const allMoves = moveSetFor(member);
+        // Filter out heals once a side has hit its heal cap so neither
+        // team can stall forever by random-rolling Community Patch.
+        const moves =
+          healsUsedRef.current[attacker] >= MAX_HEALS_PER_SIDE
+            ? allMoves.filter((m) => m.effect !== "heal")
+            : allMoves;
+        const pool = moves.length > 0 ? moves : allMoves;
+        const move = pool[Math.floor(Math.random() * pool.length)];
 
         const swing = applySwing(attacker, move);
         if (swing.hung) {
@@ -494,9 +516,15 @@ export function BattleScene({
     await new Promise((r) => window.setTimeout(r, AI_THINK_MS));
     if (rightHPRef.current <= 0 || leftHPRef.current <= 0) return;
     const member = activeMember("right");
-    const moves = moveSetFor(member);
+    const allMoves = moveSetFor(member);
+    // Once the AI has used its heal allowance, drop heal moves so it
+    // can't loop "Community Patch" forever and stall the battle.
+    const moves =
+      healsUsedRef.current.right >= MAX_HEALS_PER_SIDE
+        ? allMoves.filter((m) => m.effect !== "heal")
+        : allMoves;
     const move = pickAIMove(
-      moves,
+      moves.length > 0 ? moves : allMoves,
       member,
       activeMember("left"),
       rightHPRef.current
