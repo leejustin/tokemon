@@ -24,6 +24,7 @@ interface Props {
 
   onSelect: (m: AIModel) => void;
   onCompareToggle: (id: number) => void;
+  onOpenAdventure: () => void;
   inCompare: (id: number) => boolean;
 }
 
@@ -41,6 +42,7 @@ export function Pokedex({
   setSortKey,
   onSelect,
   onCompareToggle,
+  onOpenAdventure,
   inCompare,
 }: Props) {
   const MODELS = models ?? DEFAULT_MODELS;
@@ -91,6 +93,8 @@ export function Pokedex({
 
   return (
     <div>
+      <AdventureCTA onOpenAdventure={onOpenAdventure} />
+
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <Select
@@ -193,6 +197,46 @@ export function Pokedex({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function AdventureCTA({
+  onOpenAdventure,
+}: {
+  onOpenAdventure: () => void;
+}) {
+  return (
+    <div className="mb-5 rounded-2xl overflow-hidden ring-1 ring-inset ring-amber-300/30 bg-amber-400/[0.08]">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 p-4 sm:p-5">
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-mono uppercase tracking-[0.35em] text-amber-300">
+            Adventure Mode
+          </div>
+          <h2 className="mt-1 font-display font-black text-white text-xl sm:text-2xl leading-tight">
+            Walk the meetup. Battle trainers. Unlock mythicals.
+          </h2>
+          <p className="mt-1 text-xs sm:text-sm text-ink-300 max-w-2xl">
+            Pick a partner and explore the GenAI Builder Meetup, Pier 67, and
+            the bay. Claude Mythos is waiting for trainers who show up.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenAdventure}
+          className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-display font-black text-sm sm:text-base text-black transition active:scale-[0.98] hover:brightness-110"
+          style={{
+            background:
+              "linear-gradient(180deg, #fde68a 0%, #f5d76e 48%, #d4a017 100%)",
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.55), 0 12px 26px -12px rgba(245,215,110,0.8)",
+          }}
+        >
+          <span aria-hidden>🎮</span>
+          Start an Adventure
+        </button>
+      </div>
     </div>
   );
 }

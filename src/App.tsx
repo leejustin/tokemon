@@ -119,7 +119,6 @@ function App() {
         compareCount={compareModels.length}
         onOpenCompare={openCompare}
         onOpenBattle={openBattle}
-        onOpenAdventure={() => setAdventureOpen(true)}
         onHome={backToGrid}
         showSearch={view.kind === "grid"}
       />
@@ -140,6 +139,7 @@ function App() {
                 setSortKey={setSortKey}
                 onSelect={selectModel}
                 onCompareToggle={toggleCompare}
+                onOpenAdventure={() => setAdventureOpen(true)}
                 inCompare={(id) => compareIds.includes(id)}
               />
             )}
@@ -252,7 +252,6 @@ interface HeaderProps {
   compareCount: number;
   onOpenCompare: () => void;
   onOpenBattle: () => void;
-  onOpenAdventure: () => void;
   onHome: () => void;
   showSearch: boolean;
 }
@@ -263,7 +262,6 @@ function Header({
   compareCount,
   onOpenCompare,
   onOpenBattle,
-  onOpenAdventure,
   onHome,
   showSearch,
 }: HeaderProps) {
@@ -316,15 +314,6 @@ function Header({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={onOpenAdventure}
-            title="Adventure Mode — walk around the meetup"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition bg-amber-400/10 text-amber-200 border-amber-300/30 hover:bg-amber-400/20"
-          >
-            <span aria-hidden>🎮</span>
-            <span className="hidden sm:inline">Adventure</span>
-          </button>
           <button
             type="button"
             onClick={onOpenCompare}
