@@ -103,12 +103,14 @@ slug and incrementing `evolutionStage` numbers (1, 2, 3).
 
 This is a fully static SPA — drop the `dist/` folder onto any static host:
 
-- **Vercel / Netlify** — Connect the repo, set build command `npm run build`,
-  publish directory `dist`. No env vars needed.
-- **GitHub Pages** — `npm run build`, then publish `dist/` to a `gh-pages`
-  branch (e.g. via `gh-pages` package).
-- **Cloudflare Pages** — Same as Vercel. Build `npm run build`, output `dist`.
-- **Local file** — `npm run preview` serves the production build locally.
+- **GitHub Pages (CI)** — On push to `main`, [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml) runs `npm run build` and deploys `dist/`. One-time setup in the repo on GitHub:
+  1. **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions** (not “Deploy from a branch”).
+  2. **Settings → Actions → General → Workflow permissions:** set **Read and write permissions** (required so the workflow can publish to Pages).
+  After the first successful run, the site is at `https://<your-username>.github.io/<repo>/` (e.g. `…/tokemon/`). `vite.config.ts` reads `VITE_BASE_PATH` from the workflow so assets load under that path.
+- **Custom domain** — Add a one-line file `public/CNAME` whose contents are your hostname (e.g. `tokemon.example.com`). In **Settings → Pages**, set the same **Custom domain** and follow GitHub’s DNS checks. Then edit the workflow: set `VITE_BASE_PATH` to `"/"` instead of `/<repo>/`, because the live site is served at the domain root.
+- **Vercel / Netlify** — Connect the repo, build `npm run build`, publish `dist`. Use default base `/` (do not set `VITE_BASE_PATH` unless you use a subpath).
+- **Cloudflare Pages** — Same as Vercel.
+- **Local production** — `npm run preview` serves the build at `http://localhost:4173` with `base: "/"`.
 
 ## License
 
