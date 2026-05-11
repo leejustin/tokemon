@@ -54,6 +54,7 @@ const TREASURE_ISLAND_WARNING_LINE =
   "That leads to Treasure Island. The only treasure you'll find there is solitude.";
 const SOUTH_BAY_WARNING_LINE =
   "You own a Caltrain Go Pass. Might as well use it to get to South Bay.";
+const MEMORYNO_ENCOUNTER_COOLDOWN_MS = 5_000;
 
 interface Props {
   onExit: () => void;
@@ -101,6 +102,7 @@ export function AdventureView({ onExit }: Props) {
   const [battle, setBattle] = useState<{ npc: NPC; npcModel: AIModel } | null>(
     null
   );
+  const lastMemoryNoEncounterAtRef = useRef(0);
 
   // Welcome on first load — only when we already have a partner
   const welcomedRef = useRef(false);
@@ -181,6 +183,16 @@ export function AdventureView({ onExit }: Props) {
           if (enc.requiresKayak && !save.hasKayak) continue;
           if (enc.oneShot && save.defeated.includes(enc.npcId)) continue;
           if (Math.random() < enc.chance) {
+            if (
+              enc.npcId === "wild-memoryno" &&
+              Date.now() - lastMemoryNoEncounterAtRef.current <
+                MEMORYNO_ENCOUNTER_COOLDOWN_MS
+            ) {
+              continue;
+            }
+            if (enc.npcId === "wild-memoryno") {
+              lastMemoryNoEncounterAtRef.current = Date.now();
+            }
             tryStartWildEncounter(enc);
             return;
           }

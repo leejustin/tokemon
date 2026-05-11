@@ -60,6 +60,8 @@ const TOKENS_PER_ATTACK_OUT = 800;
 const COLOSSUS_BURN_MULT = 100;
 /** Hang chance for GPT-o∞ when it's about to attack. */
 const HANG_CHANCE = 0.25;
+const MAX_ATTACK_DROPS = 3;
+const ATTACK_DROP_MULT = 0.15;
 
 /**
  * Pokemon-style battle scene with two modes:
@@ -112,6 +114,10 @@ export function BattleScene({
     left: 0,
     right: 0,
   });
+  const [attackDrops, setAttackDrops] = useState<Record<Side, number>>({
+    left: 0,
+    right: 0,
+  });
   const [log, setLog] = useState<string[]>(["A wild matchup begins!"]);
   const [burned, setBurned] = useState<{ left: number; right: number }>({
     left: 0,
@@ -128,9 +134,11 @@ export function BattleScene({
   const leftHPRef = useRef(leftHP);
   const rightHPRef = useRef(rightHP);
   const activeIdxRef = useRef(activeIdx);
+  const attackDropsRef = useRef(attackDrops);
   leftHPRef.current = leftHP;
   rightHPRef.current = rightHP;
   activeIdxRef.current = activeIdx;
+  attackDropsRef.current = attackDrops;
 
   /** Sum of $ burned by both sides — debited from adventure credits once. */
   const totalBurned = burned.left + burned.right;
@@ -170,6 +178,18 @@ export function BattleScene({
     [left, right]
   );
 
+  const rotateActive = useCallback(
+    (side: Side) => {
+      setActiveIdx((cur) => {
+        if (side === "left") {
+          return { ...cur, left: (cur.left + 1) % left.length };
+        }
+        return { ...cur, right: (cur.right + 1) % right.length };
+      });
+    },
+    [left.length, right.length]
+  );
+
   /** Resolve one attacker→defender swing: applies damage, animates, logs, and
    *  rotates active member.
    *
@@ -198,16 +218,76 @@ export function BattleScene({
       }
 
       const defenderSide: Side = attackerSideArg === "left" ? "right" : "left";
-      const defender = activeMember(defenderSide);
-      const { hp: dmg, crit } = computeDamage(attacker, defender, move);
       const cost = attackCost(attacker);
       const colossus = isColossus(attacker);
 
       setAttackerSide(attackerSideArg);
-      setShake(defenderSide);
+      setShake(move.effect === "heal" ? null : defenderSide);
 
       const currentDefHP =
         defenderSide === "left" ? leftHPRef.current : rightHPRef.current;
+
+      setBurned((b) =>
+        attackerSideArg === "left"
+          ? { ...b, left: b.left + cost }
+          : { ...b, right: b.right + cost }
+      );
+
+      if (move.effect === "heal") {
+        const currentAttackerHP =
+          attackerSideArg === "left" ? leftHPRef.current : rightHPRef.current;
+        const healedHP = Math.min(HP_PER_SIDE, currentAttackerHP + move.power);
+        const recovered = healedHP - currentAttackerHP;
+        if (attackerSideArg === "left") {
+          leftHPRef.current = healedHP;
+          setLeftHP(healedHP);
+        } else {
+          rightHPRef.current = healedHP;
+          setRightHP(healedHP);
+        }
+        setLog((l) =>
+          truncatedLog([
+            ...l,
+            `${attacker.name} used ${move.name}!  +${recovered} HP  ·  ${
+              colossus ? "🔥 " : ""
+            }${formatUSD(cost)}${colossus ? " incinerated" : ""}`,
+          ])
+        );
+        rotateActive(attackerSideArg);
+        return { defenderHP: currentDefHP, hung: false };
+      }
+
+      if (move.effect === "attackDown") {
+        const nextDrop = Math.min(
+          MAX_ATTACK_DROPS,
+          attackDropsRef.current[defenderSide] + 1
+        );
+        attackDropsRef.current = {
+          ...attackDropsRef.current,
+          [defenderSide]: nextDrop,
+        };
+        setAttackDrops((cur) => ({ ...cur, [defenderSide]: nextDrop }));
+        setLog((l) =>
+          truncatedLog([
+            ...l,
+            `${attacker.name} used ${move.name}!  ${teamLabel(
+              defenderSide
+            )} Attack fell  ·  ${colossus ? "🔥 " : ""}${formatUSD(cost)}${
+              colossus ? " incinerated" : ""
+            }`,
+          ])
+        );
+        rotateActive(attackerSideArg);
+        return { defenderHP: currentDefHP, hung: false };
+      }
+
+      const defender = activeMember(defenderSide);
+      const { hp: dmg, crit } = computeDamage(
+        attacker,
+        defender,
+        move,
+        attackDropsRef.current[attackerSideArg]
+      );
       const newDefHP = Math.max(0, currentDefHP - dmg);
 
       if (defenderSide === "left") {
@@ -217,12 +297,6 @@ export function BattleScene({
         rightHPRef.current = newDefHP;
         setRightHP(newDefHP);
       }
-
-      setBurned((b) =>
-        attackerSideArg === "left"
-          ? { ...b, left: b.left + cost }
-          : { ...b, right: b.right + cost }
-      );
 
       setLog((l) =>
         truncatedLog([
@@ -236,16 +310,11 @@ export function BattleScene({
       );
 
       // Rotate active member of the attacking side (keeps multi-member teams fun)
-      setActiveIdx((cur) => {
-        if (attackerSideArg === "left") {
-          return { ...cur, left: (cur.left + 1) % left.length };
-        }
-        return { ...cur, right: (cur.right + 1) % right.length };
-      });
+      rotateActive(attackerSideArg);
 
       return { defenderHP: newDefHP, hung: false };
     },
-    [activeMember, isAdventure, left.length, right.length]
+    [activeMember, isAdventure, rotateActive]
   );
 
   /* ─── Intro / phase orchestration ─────────────────────────────────── */
@@ -426,7 +495,12 @@ export function BattleScene({
     if (rightHPRef.current <= 0 || leftHPRef.current <= 0) return;
     const member = activeMember("right");
     const moves = moveSetFor(member);
-    const move = pickAIMove(moves, activeMember("left"), member);
+    const move = pickAIMove(
+      moves,
+      member,
+      activeMember("left"),
+      rightHPRef.current
+    );
     setActor("anim");
     const swing = applySwing("right", move);
     if (swing.hung) {
@@ -978,10 +1052,10 @@ function ManualActionPanel({
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-ink-500">
-                      Power
+                      {moveMetaLabel(m).label}
                     </span>
                     <span className="text-[10px] font-mono text-amber-300 tabular-nums">
-                      {m.power}
+                      {moveMetaLabel(m).value}
                     </span>
                   </div>
                 </button>
@@ -1005,6 +1079,12 @@ function padMoves(moves: Move[]): (Move | null)[] {
   const out: (Move | null)[] = [...moves];
   while (out.length < 4) out.push(null);
   return out.slice(0, 4);
+}
+
+function moveMetaLabel(move: Move): { label: string; value: string | number } {
+  if (move.effect === "heal") return { label: "Recover", value: `+${move.power}` };
+  if (move.effect === "attackDown") return { label: "Effect", value: "Atk ↓" };
+  return { label: "Power", value: move.power };
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -1428,60 +1508,85 @@ function TeamTypeChips({ team }: { team: AIModel[] }) {
 
 export interface Move {
   name: string;
-  /** Base power, ~30 (chip) to ~90 (haymaker). */
+  /** Damage power or support strength. */
   power: number;
+  effect?: "damage" | "heal" | "attackDown";
 }
 
-/** Each type contributes two moves. A model's set is up to 4 unique picks
+/** Each type contributes several moves. A model's set is up to 4 unique picks
  *  drawn deterministically (so the same modelmon always gets the same kit). */
 const MOVES_BY_TYPE: Record<string, Move[]> = {
   Reasoning: [
     { name: "Chain of Thought", power: 70 },
     { name: "Deep Think", power: 85 },
+    { name: "Self-Reflection", power: 16, effect: "heal" },
+    { name: "Socratic Trap", power: 45, effect: "attackDown" },
   ],
   Coding: [
     { name: "Refactor Strike", power: 65 },
     { name: "Stack Trace", power: 55 },
+    { name: "Hotfix Patch", power: 18, effect: "heal" },
+    { name: "Lint Storm", power: 45, effect: "attackDown" },
   ],
   Vision: [
     { name: "Pixel Gaze", power: 60 },
     { name: "Image Lock", power: 50 },
+    { name: "Focus Shift", power: 14, effect: "heal" },
+    { name: "Occlusion Fog", power: 45, effect: "attackDown" },
   ],
   Speed: [
     { name: "Token Burst", power: 45 },
     { name: "Streaming Slam", power: 55 },
+    { name: "Latency Dodge", power: 14, effect: "heal" },
+    { name: "Rate Limit", power: 45, effect: "attackDown" },
   ],
   Multimodal: [
     { name: "Mode Swap", power: 60 },
     { name: "Cross-Modal", power: 70 },
+    { name: "Context Blend", power: 16, effect: "heal" },
+    { name: "Signal Jam", power: 45, effect: "attackDown" },
   ],
   "Long-Context": [
     { name: "Context Coil", power: 65 },
     { name: "Memory Bind", power: 50 },
+    { name: "Recall Cache", power: 20, effect: "heal" },
+    { name: "Attention Sink", power: 45, effect: "attackDown" },
   ],
   Multilingual: [
     { name: "Polyglot Rush", power: 55 },
     { name: "Lexical Beam", power: 65 },
+    { name: "Translation Loop", power: 15, effect: "heal" },
+    { name: "Grammar Snare", power: 45, effect: "attackDown" },
   ],
   "Tool-Use": [
     { name: "Tool Call", power: 60 },
     { name: "Function Smash", power: 75 },
+    { name: "Repair Tool", power: 18, effect: "heal" },
+    { name: "Permission Denied", power: 45, effect: "attackDown" },
   ],
   "Open-Source": [
     { name: "Fork Strike", power: 60 },
     { name: "Pull Request", power: 50 },
+    { name: "Community Patch", power: 18, effect: "heal" },
+    { name: "License Check", power: 45, effect: "attackDown" },
   ],
   Audio: [
     { name: "Sonic Echo", power: 55 },
     { name: "Spectrogram", power: 65 },
+    { name: "Noise Gate", power: 14, effect: "heal" },
+    { name: "Feedback Squeal", power: 45, effect: "attackDown" },
   ],
   Compact: [
     { name: "Quick Quip", power: 40 },
     { name: "Tiny Punch", power: 50 },
+    { name: "Cache Nap", power: 16, effect: "heal" },
+    { name: "Quantize", power: 45, effect: "attackDown" },
   ],
   Frontier: [
     { name: "Frontier Blast", power: 90 },
     { name: "Scaling Roar", power: 75 },
+    { name: "Safety Case", power: 18, effect: "heal" },
+    { name: "Alignment Tax", power: 45, effect: "attackDown" },
   ],
 };
 
@@ -1491,11 +1596,13 @@ export function moveSetFor(model: AIModel): Move[] {
   for (const t of model.types) {
     const pool = MOVES_BY_TYPE[t];
     if (!pool) continue;
-    // Deterministic pick + occasional second move from a richly-typed model
-    const pick = pool[model.id % pool.length];
-    if (!seen.has(pick.name)) {
-      out.push(pick);
-      seen.add(pick.name);
+    const start = model.id % pool.length;
+    for (let i = 0; i < pool.length && out.length < 4; i++) {
+      const pick = pool[(start + i) % pool.length];
+      if (!seen.has(pick.name)) {
+        out.push(pick);
+        seen.add(pick.name);
+      }
     }
     if (out.length >= 4) break;
   }
@@ -1505,12 +1612,21 @@ export function moveSetFor(model: AIModel): Move[] {
     return [
       { name: "Constitutional Beam", power: 120 },
       { name: "Mythic Recall", power: 90 },
-      { name: "Oracle Sight", power: 85 },
-      { name: "Infinite Context", power: 80 },
+      { name: "Oracle Sight", power: 45, effect: "attackDown" },
+      { name: "Infinite Context", power: 22, effect: "heal" },
     ];
   }
-  // Pad with a generic Tackle if the model has unusual types
-  while (out.length < 2) out.push({ name: "Tackle", power: 35 });
+  // Pad unusual type combinations with simple defaults.
+  const fallbackMoves: Move[] = [
+    { name: "Tackle", power: 35 },
+    { name: "Cache Warmup", power: 14, effect: "heal" },
+    { name: "Prompt Fumble", power: 45, effect: "attackDown" },
+    { name: "Token Tap", power: 45 },
+  ];
+  for (const move of fallbackMoves) {
+    if (out.length >= 4) break;
+    if (!seen.has(move.name)) out.push(move);
+  }
   return out;
 }
 
@@ -1522,13 +1638,18 @@ export function moveSetFor(model: AIModel): Move[] {
 export function computeDamage(
   attacker: AIModel,
   defender: AIModel,
-  move: Move
+  move: Move,
+  attackDrops = 0
 ): { hp: number; crit: boolean } {
+  if (isMythos(attacker)) {
+    return { hp: HP_PER_SIDE, crit: true };
+  }
+  const attackMult = Math.max(0.55, 1 - attackDrops * ATTACK_DROP_MULT);
   const ratio = Math.max(
     0.6,
     Math.min(
       1.6,
-      attacker.stats.attack / Math.max(60, defender.stats.defense)
+      (attacker.stats.attack * attackMult) / Math.max(60, defender.stats.defense)
     )
   );
   const variance = 0.88 + Math.random() * 0.24;
@@ -1541,13 +1662,30 @@ export function computeDamage(
 /** Simple rival "AI": prefer the highest-power move 70% of the time, otherwise
  *  pick randomly. Adds a tiny "personality" knob via stat ratios so smarter
  *  models pick better moves slightly more often. */
-function pickAIMove(moves: Move[], myActive: AIModel, _opp: AIModel): Move {
+function pickAIMove(
+  moves: Move[],
+  myActive: AIModel,
+  _opp: AIModel,
+  myHP = HP_PER_SIDE
+): Move {
   if (moves.length === 0) return { name: "Tackle", power: 35 };
+  const heal = moves.find((m) => m.effect === "heal");
+  if (heal && myHP <= 45 && Math.random() < 0.55) return heal;
   const smart = Math.min(0.95, 0.4 + (myActive.stats.attack / 300));
   if (Math.random() < smart) {
-    return [...moves].sort((a, b) => b.power - a.power)[0];
+    return [...moves].sort((a, b) => moveScore(b) - moveScore(a))[0];
   }
   return moves[Math.floor(Math.random() * moves.length)];
+}
+
+function moveScore(move: Move): number {
+  if (move.effect === "heal") return 50;
+  if (move.effect === "attackDown") return 58;
+  return move.power;
+}
+
+function teamLabel(side: Side): string {
+  return side === "left" ? "Your team's" : "Rival team's";
 }
 
 function tokensFor(model: AIModel): { in: number; out: number; mult: number } {

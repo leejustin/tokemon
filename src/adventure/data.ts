@@ -800,7 +800,7 @@ export const WELCOME_LINES: string[] = [
 export const BLACKOUT_LINES: string[] = [
   "Your modelmon collapsed near the cold brew dispenser.",
   "Someone gave you a business card and called you a Waymo.",
-  "You wake up at the entrance. Half your credits are gone.",
+  "Your agents continued to run while you were asleep. Half your credits are gone.",
 ];
 
 export const NO_CREDITS_LINE =
@@ -921,7 +921,7 @@ export const PIER_SCENE: Scene = {
   encounters: [
     {
       onTile: ["water"],
-      chance: 0.04,
+      chance: 0.06,
       npcId: "wild-memoryno",
       requiresKayak: true,
     },
