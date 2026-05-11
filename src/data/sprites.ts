@@ -870,7 +870,8 @@ const sp_memoryno: Sprite = {
   palette: basePalette("#22d3ee", "#0f766e", "#a7f3d0", "#fde047", "#a78bfa"),
 };
 
-// 155. Project Truckanon — small unmarked moving truck, dark windows
+// 155. Mac Mini XL — looks like an unmarked moving truck, but it's a Mac
+//      mini scaled up to truck size. Visual stayed; only the lore changed.
 const sp_truckanon: Sprite = {
   grid: [
     "................",

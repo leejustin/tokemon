@@ -438,7 +438,8 @@ export const sp_memoryno_world: Sprite = {
   }),
 };
 
-/* ─── In-world Project Truckanon — small unmarked moving truck ───── */
+/* ─── In-world Mac Mini XL — looks like a small unmarked moving truck,
+ *     because that's basically what a truck-sized Mac mini looks like. ─── */
 
 export const sp_truck_world: Sprite = {
   grid: [

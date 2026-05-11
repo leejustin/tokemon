@@ -184,7 +184,15 @@ export function BattleScene({
 
       // Hang mechanic — GPT-o∞ rolls before doing anything. On hang we never
       // even compute damage; we just trigger the error sequence.
-      if (isHang(attacker) && Math.random() < HANG_CHANCE) {
+      //
+      // Compare-mode only: in adventure mode a forced draw would mean the
+      // NPC neither counts as defeated nor as a clean loss, which is just
+      // frustrating. Adventure runs treat GPT-o∞ as a normal heavy hitter.
+      if (
+        !isAdventure &&
+        isHang(attacker) &&
+        Math.random() < HANG_CHANCE
+      ) {
         setHangEvent({ side: attackerSideArg, modelName: attacker.name });
         return { defenderHP: NaN, hung: true };
       }
@@ -237,7 +245,7 @@ export function BattleScene({
 
       return { defenderHP: newDefHP, hung: false };
     },
-    [activeMember, left.length, right.length]
+    [activeMember, isAdventure, left.length, right.length]
   );
 
   /* ─── Intro / phase orchestration ─────────────────────────────────── */

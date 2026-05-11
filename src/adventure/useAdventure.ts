@@ -36,6 +36,9 @@ export interface AdventureSave {
   blackouts: number;
   /** Has the player received the kayak yet? Enables water tiles. */
   hasKayak: boolean;
+  /** How many times Brad the VC has wired you a check. The amount and his
+   *  follow-up question both escalate with each pitch — see BRAD_PITCHES. */
+  bradPitches: number;
 }
 
 const DEFAULT_SAVE: AdventureSave = {
@@ -50,6 +53,7 @@ const DEFAULT_SAVE: AdventureSave = {
   totalBattles: 0,
   blackouts: 0,
   hasKayak: false,
+  bradPitches: 0,
 };
 
 function readSave(): AdventureSave {
@@ -106,6 +110,8 @@ export interface AdventureState {
   /** Mark a vendor/VC NPC as already transacted-with, without touching
    *  credits. Used by the VC NPC where we *grant* money instead of taking. */
   markPaidVendor: (npcId: string) => void;
+  /** Increment Brad's pitch counter and return the new count. */
+  recordBradPitch: () => number;
   /** Wipes the save (used by the "New game" button). */
   reset: () => void;
 }
@@ -159,7 +165,9 @@ export function useAdventure(): AdventureState {
       if (fainted) {
         return {
           ...s,
-          partnerHP: Math.round(MAX_HP * 0.5),
+          // Full HP on wake-up — getting Ubered home is a full reset.
+          // Credits still take a 50% hit because someone had to pay the driver.
+          partnerHP: MAX_HP,
           credits: Math.floor(nextCredits * 0.5),
           totalBattles: s.totalBattles + 1,
           blackouts: s.blackouts + 1,
@@ -250,6 +258,15 @@ export function useAdventure(): AdventureState {
     return drained;
   }, []);
 
+  const recordBradPitch = useCallback((): number => {
+    let next = 0;
+    setSave((s) => {
+      next = s.bradPitches + 1;
+      return { ...s, bradPitches: next };
+    });
+    return next;
+  }, []);
+
   const reset = useCallback(() => {
     setSave({ ...DEFAULT_SAVE });
   }, []);
@@ -268,6 +285,7 @@ export function useAdventure(): AdventureState {
     markTalked,
     drainCreditsOnce,
     markPaidVendor,
+    recordBradPitch,
     reset,
   };
 }

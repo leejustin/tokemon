@@ -381,7 +381,8 @@ const OFFICE_NPCS: NPC[] = [
 /**
  * Outdoor boardwalk + bay. The player enters through 'd' on the left and
  * can travel onto water tiles only after receiving the kayak from the
- * Kayak Guy NPC. The truck on the small island holds a mythical creature.
+ * Kayak Guy NPC. The "truck" on the small island is the Mac Mini XL — a
+ * truck-sized Mac mini, in keeping with Mac Mini Mike's whole local-LLM bit.
  */
 const PIER_SRC: string[] = [
   "===========~~~~~~~~~~",
@@ -662,6 +663,104 @@ export const TILE_FLAVOR: Partial<Record<TileKind, string[]>> = {
   ],
 };
 
+/* ─── Brad's pitch rotation ──────────────────────────────────────── */
+
+/**
+ * Brad wires you a flat $5,000 every single time you talk to him. The amount
+ * never changes — it's just there, like a faucet. What rotates is the
+ * "diligence" question he asks first and the unhinged response he gives as
+ * the wire goes out. Pitch N (1-indexed) deterministically picks the Nth
+ * entry in this list, wrapping around so he stays interesting forever.
+ *
+ *   - question: the satirical thing Brad asks before wiring
+ *   - response: what he says as the money goes through
+ */
+export interface BradPitch {
+  question: string;
+  response: string;
+}
+
+/** Flat amount Brad wires every visit, in dollars. */
+export const BRAD_PITCH_AMOUNT = 5_000;
+
+export const BRAD_PITCHES: BradPitch[] = [
+  {
+    question: "What are you working on? Is it AI? It's AI, right? Tell me it's AI.",
+    response:
+      "Incredible. Wiring you $5K right now. Standard SAFE, $10M cap, 20% discount. Don't read it.",
+  },
+  {
+    question: "Wait wait wait — quick one — are you AGENTIC? Like, properly agentic?",
+    response:
+      "STOP TALKING. Wiring another $5K. The thesis is intact. Don't make me read the deck.",
+  },
+  {
+    question:
+      "Okay, real diligence: do you have an MCP server? You don't even need to use it. Just have one.",
+    response:
+      "PERFECT. $5K outbound. I'm gonna tweet 'leaning into agentic infra' tonight regardless of your answer.",
+  },
+  {
+    question: "Be honest with me. Is this a wrapper? It's a wrapper, isn't it? Is it a GOOD wrapper?",
+    response:
+      "Wrappers ARE the moat now. Marc said so on a podcast. $5K incoming.",
+  },
+  {
+    question:
+      "How many founding engineers have you poached from Anthropic? Be specific. I'll tell my LPs.",
+    response:
+      "Don't even answer. I'll round up. Wiring $5K and updating the LP letter.",
+  },
+  {
+    question: "Quick — are you AGI-pilled, AGI-curious, or AGI-skeptical-but-vibes-aligned?",
+    response:
+      "All three?? UNREAL. $5K outbound. I'm flying to Dubai tonight to tell our anchor.",
+  },
+  {
+    question:
+      "Real talk: if you had to choose between revenue and a benchmark, which would it be? (Trick question. The answer is benchmark.)",
+    response:
+      "Beautiful. $5K wire on its way. We are going to be SO embarrassed about this in 18 months.",
+  },
+  {
+    question:
+      "Brad's eyes glaze over. He reads off his phone: 'What is your moat exactly… in two words.'",
+    response:
+      "He didn't hear your answer. The wire is already initiated. $5K confirmed.",
+  },
+  {
+    question:
+      "Brad's other LP joins the call. He doesn't say his name. He has an accent. He asks if you'd consider 'data partnerships.'",
+    response:
+      "Don't worry about the structure. Brad signs something. $5K arrives from an LLC registered in Delaware via Mauritius.",
+  },
+  {
+    question:
+      "Brad isn't here anymore. His Notion AI is taking the meeting. It opens with: 'GREAT pitch. Reflecting on what was said…'",
+    response:
+      "Notion AI wires you $5K. Memo line: 'definitely AI'. Brad will sign the docs whenever he gets back from Burning Man.",
+  },
+  {
+    question:
+      "Brad squints at you. 'Wait. Have I funded you before?' He scrolls his Carta. 'Doesn't matter. New round.'",
+    response:
+      "Bookkeeper flags it as a duplicate wire. Brad approves it as 'pro-rata, kind of'. $5K through.",
+  },
+  {
+    question:
+      "Brad: 'Quick gut-check — do your evals go up and to the right? Even if you don't have evals.'",
+    response:
+      "Brad nods at his own question. Doesn't wait for an answer. $5K outbound. The chart in his head is going up and to the right.",
+  },
+];
+
+/** Pitches deterministically rotate through BRAD_PITCHES forever. */
+export function bradPitchFor(pitchNumber: number): BradPitch {
+  const idx = ((pitchNumber - 1) % BRAD_PITCHES.length + BRAD_PITCHES.length) %
+    BRAD_PITCHES.length;
+  return BRAD_PITCHES[idx];
+}
+
 /* ─── Welcome / system lines ─────────────────────────────────────── */
 
 export const WELCOME_LINES: string[] = [
@@ -681,7 +780,7 @@ export const NO_CREDITS_LINE =
 
 export const PIER_WELCOME_LINES: string[] = [
   "You stepped out onto Pier 67.",
-  "Sea spray. Tourists. A man with eight kayaks. A truck on a small island, somehow.",
+  "Sea spray. Tourists. A man with eight kayaks. Something truck-shaped on a small island. From here it almost looks like a Mac mini.",
 ];
 
 /* ─── Wild encounters & mythical NPCs ─────────────────────────────── */
@@ -720,28 +819,32 @@ export const WILD_NPCS: NPC[] = [
   },
   {
     id: "wild-truck",
-    name: "Project Truckanon",
-    blurb: "A fictional unmarked moving truck. Some say AGI is inside.",
-    emoji: "🚚",
-    color: "#fbbf24",
+    name: "Mac Mini XL",
+    blurb:
+      "It looked like a truck from the boardwalk. Up close, it is, very clearly, a Mac mini the size of a truck.",
+    emoji: "🖥",
+    color: "#a8a29e",
     position: { x: -1, y: -1 },
     facing: "down",
     role: "battle",
     modelFullName: "project-truckanon",
     reward: 20,
     preBattle: [
-      "The truck's engine clicks on. Somehow.",
-      "A voice from the back yells: 'WE ARE NOT YET READY TO SHIP.'",
-      "Project Truckanon would like to battle.",
+      "The 'truck' hums to life. The hum is suspiciously quiet.",
+      "A single white LED blinks on the front. There are no doors. There never were.",
+      "It's a Mac mini. It's the size of a truck. Mac Mini XL would like to battle.",
     ],
     postWin: [
-      "The truck slowly drives off across the water. You don't ask.",
+      "The Mac Mini XL goes to sleep. The LED dims. It does not power off.",
+      "Somewhere in SoMa, Mac Mini Mike feels a single tear roll down his cheek.",
       "(Mythical added to your Pokedex as #155.)",
     ],
     postLoss: [
-      "The truck just sits there, idling. Unionizing? Unclear.",
+      "The Mac Mini XL didn't move. It didn't need to. Local inference, baby.",
     ],
-    afterDefeat: ["The truck remains. Don't talk about the truck."],
+    afterDefeat: [
+      "The Mac Mini XL remains on the island. Still local. Still humming. Still not for sale.",
+    ],
   },
 ];
 

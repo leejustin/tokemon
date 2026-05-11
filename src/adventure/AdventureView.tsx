@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AIModel } from "../data/types";
 import {
   BLACKOUT_LINES,
+  BRAD_PITCH_AMOUNT,
   KAYAK_WALKABLE,
   NO_CREDITS_LINE,
   PIER_WELCOME_LINES,
@@ -10,6 +11,7 @@ import {
   WALKABLE,
   WELCOME_LINES,
   WILD_NPCS,
+  bradPitchFor,
   findKnownNPC,
   findNPCAt,
   npcModel,
@@ -176,7 +178,7 @@ export function AdventureView({ onExit }: Props) {
       startNPCInteraction(npc);
       return;
     }
-    // Truck tile? Trigger the Truckanon encounter.
+    // "Truck" tile? It's actually the Mac Mini XL — kick off that encounter.
     const tile = TILES[target.y][target.x];
     if (tile === "truck") {
       const truckNpc = WILD_NPCS.find((n) => n.id === "wild-truck");
@@ -191,7 +193,7 @@ export function AdventureView({ onExit }: Props) {
       }
       if (truckNpc) {
         setDialogue({
-          lines: truckNpc.afterDefeat ?? ["The truck remains."],
+          lines: truckNpc.afterDefeat ?? ["The Mac Mini XL hums on."],
           kind: "system",
         });
         return;
@@ -271,12 +273,21 @@ export function AdventureView({ onExit }: Props) {
       return;
     }
     if (npc.role === "vc") {
-      const pitched = save.paidVendor.includes(npc.id);
+      // Brad never stops. Each visit shows the next pitch in the ladder —
+      // bigger amount, increasingly unhinged "diligence question" — and the
+      // money lands when the dialogue closes (see vc-intro in closeDialogue).
+      const nextPitch = bradPitchFor(save.bradPitches + 1);
+      const intro =
+        save.bradPitches === 0
+          ? // First time: include Brad's full intro before his question.
+            npc.introLines ?? []
+          : [
+              `Brad spots you again. He's been here the whole time.`,
+              `"Back already? Good. The fund just closed another tranche."`,
+            ];
       setDialogue({
-        lines: pitched
-          ? npc.repeatLines ?? ["..."]
-          : [...(npc.introLines ?? []), ...(npc.postWin ?? [])],
-        kind: pitched ? "system" : "vc-intro",
+        lines: [...intro, nextPitch.question],
+        kind: "vc-intro",
         npcId: npc.id,
       });
       return;
@@ -350,9 +361,20 @@ export function AdventureView({ onExit }: Props) {
       }
       case "vc-intro": {
         if (!d.npcId) return;
-        // Brad assumes you're doing AI. He's already wired the money.
-        adventure.markPaidVendor(d.npcId);
-        adventure.grantCredits(50000);
+        // Brad assumes you're doing AI. He always wires a flat $5K — only the
+        // satirical question + response rotates each visit. Counter is kept
+        // around so the rotation is deterministic per visit.
+        const pitchNumber = adventure.recordBradPitch();
+        const pitch = bradPitchFor(pitchNumber);
+        adventure.grantCredits(BRAD_PITCH_AMOUNT);
+        setDialogue({
+          lines: [
+            pitch.response,
+            `(Brad wires you $${BRAD_PITCH_AMOUNT.toLocaleString("en-US")}.)`,
+          ],
+          kind: "system",
+          npcId: d.npcId,
+        });
         return;
       }
       case "heal-intro": {

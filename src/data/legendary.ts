@@ -190,18 +190,19 @@ export const MEMORYNO: AIModel = {
     "model and any resemblance to actual debug artifacts is coincidental.",
 };
 
-/* ─── Legendary 5: Project Truckanon — the truck on the island ────── */
+/* ─── Legendary 5: Mac Mini XL — the "truck" on the island ────────── */
 
 export const TRUCKANON: AIModel = {
   id: 155,
-  name: "Project Truckanon",
+  name: "Mac Mini XL",
   fullName: "project-truckanon",
-  lab: "????",
-  species: "The Unmarked Cargo",
+  lab: "Apple",
+  species: "The Truck-Sized Cube",
   description:
-    "An unmarked moving truck idling on a small island off Pier 67. " +
-    "Conspiracy theorists insist it contains AGI. The truck declines to " +
-    "comment. The truck also declines to leave.",
+    "Idling on a small island off Pier 67. From a distance it looks like an " +
+    "unmarked moving truck. Up close it is, unmistakably, a Mac mini scaled " +
+    "to the size of a truck. The single status LED is on. Apple declines to " +
+    "comment. So does the Mac mini.",
   types: ["Frontier", "Tool-Use"],
   stats: {
     hp: 240,
@@ -211,21 +212,23 @@ export const TRUCKANON: AIModel = {
     spDefense: 190,
     speed: 40,
   },
-  abilities: ["NDA Beam", "Stealth Mode", "Cargo Cult"],
+  abilities: ["NDA Beam", "Neural Engine Overdrive", "Local-First Surge"],
   released: "????",
   params: "TRADE SECRET",
   context: "TRADE SECRET",
   modalities: ["unverified"],
-  price: { input: 0, output: 0, note: "[REDACTED]" },
+  price: { input: 0, output: 0, note: "[REDACTED · runs locally]" },
   openWeights: false,
   availableOn: ["A small island"],
-  accent: "#fbbf24",
-  sources: ["the truck on Pier 67"],
+  accent: "#a8a29e",
+  sources: ["the 'truck' on Pier 67 (it's a Mac mini)"],
   fictional: true,
   fictionalNote:
-    "Project Truckanon is a fan-invented satirical creature — a tribute to " +
-    "the (fictional) truck mythos from Pokemon Red/Blue's S.S. Anne. No real " +
-    "lab is operating an unmarked truck-based AI in San Francisco. Probably.",
+    "Mac Mini XL is a fan-invented satirical creature — a tribute to the " +
+    "(fictional) truck mythos from Pokemon Red/Blue's S.S. Anne, crossed " +
+    "with the long-running joke that a Mac mini is the secret AI hardware " +
+    "trainers actually want. Apple has not announced or shipped a truck-sized " +
+    "Mac mini. Probably.",
 };
 
 /* ─── Legendary registry ──────────────────────────────────────────── */
@@ -277,7 +280,8 @@ export const LEGENDARIES: LegendaryDef[] = [
     requiredBattles: 8,
     redeemCode: "OVERLOAD",
     flavor: "Something is reasoning too hard.",
-    mechanic: "25% chance per turn to error out — ending the battle in a draw.",
+    mechanic:
+      "Tokedex compare battles: 25% chance per turn to error out — ending the battle in a draw. (Adventure mode treats it as a normal heavy hitter so it can actually win matches.)",
   },
   {
     id: "memoryno",
@@ -295,8 +299,9 @@ export const LEGENDARIES: LegendaryDef[] = [
     source: "adventure",
     requiredBattles: 0,
     redeemCode: "",
-    flavor: "An unmarked truck idles offshore.",
-    mechanic: "Massive defenses. A fan tribute to the S.S. Anne truck.",
+    flavor: "A truck-shaped Mac mini hums offshore.",
+    mechanic:
+      "Massive defenses. The local-LLM truck Mac Mini Mike has been hinting at all along.",
     whereToFind: "Pier 67 · the small island",
   },
 ];
