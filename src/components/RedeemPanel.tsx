@@ -287,7 +287,7 @@ function LegendarySlot({
         )}
         {unlocked && (
           <div className="mt-2 text-[11px] font-mono text-amber-300/90">
-            ✦ Joined your Pokedex as #{def.model.id}.{" "}
+            ✦ Joined your Modeldex as #{def.model.id}.{" "}
             <span className="text-ink-400">
               Add it to a battle to see the quirk in action.
             </span>

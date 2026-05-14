@@ -37,7 +37,7 @@ export function DexDetail({ model, onSelect, onBack, onAddCompare, inCompare }: 
               strokeLinejoin="round"
             />
           </svg>
-          Pokedex
+          Modeldex
         </button>
         <button
           type="button"
@@ -148,14 +148,14 @@ export function DexDetail({ model, onSelect, onBack, onAddCompare, inCompare }: 
         </section>
       )}
 
-      {/* Pokedex entry */}
+      {/* Dex flavor entry */}
       <section className="mt-5 surface p-4 relative overflow-hidden">
         <div
           className="absolute left-0 top-0 bottom-0 w-1"
           style={{ background: lab.color }}
         />
         <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-ink-500 mb-1">
-          Pokedex Entry
+          Dex Entry
         </div>
         <p className="text-sm text-ink-200 leading-relaxed">{model.description}</p>
       </section>

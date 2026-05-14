@@ -464,7 +464,7 @@ const PIER_NPCS: NPC[] = [
       "If you win I'll @ you. If you lose I'll @ you anyway.",
     ],
     postWin: [
-      "Okayyyy slay. Linking your Pokedex in my bio.",
+      "Okayyyy slay. Linking your Modeldex in my bio.",
       "Btw I'm doing a workshop called 'AGI but make it cute' — DM me.",
     ],
     postLoss: [
@@ -838,7 +838,7 @@ export const WILD_NPCS: NPC[] = [
     ],
     postWin: [
       "MemoryNo dissolves into 0xFF bytes.",
-      "(Mythical added to your Pokedex as #154.)",
+      "(Mythical added to your Modeldex as #154.)",
     ],
     postLoss: [
       "MemoryNo segfaults your save. You wake up on the dock.",
@@ -865,7 +865,7 @@ export const WILD_NPCS: NPC[] = [
     postWin: [
       "The Mac Mini XL goes to sleep. The LED dims. It does not power off.",
       "Somewhere in SoMa, Mac Mini Mike feels a single tear roll down his cheek.",
-      "(Mythical added to your Pokedex as #155.)",
+      "(Mythical added to your Modeldex as #155.)",
     ],
     postLoss: [
       "The Mac Mini XL didn't move. It didn't need to. Local inference, baby.",

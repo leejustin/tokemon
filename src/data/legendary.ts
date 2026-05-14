@@ -187,8 +187,9 @@ export const MEMORYNO: AIModel = {
   fictional: true,
   fictionalNote:
     "MemoryNo is a fan-invented satirical creature — a tribute to the " +
-    "MissingNo glitch in Pokemon Red/Blue. No real lab has any such " +
-    "model and any resemblance to actual debug artifacts is coincidental.",
+    "infamous MissingNo glitch from a certain '90s monster-catching RPG. " +
+    "No real lab has any such model and any resemblance to actual debug " +
+    "artifacts is coincidental.",
 };
 
 /* ─── Legendary 5: Mac Mini XL — the "truck" on the island ────────── */
@@ -226,10 +227,10 @@ export const TRUCKANON: AIModel = {
   fictional: true,
   fictionalNote:
     "Mac Mini XL is a fan-invented satirical creature — a tribute to the " +
-    "(fictional) truck mythos from Pokemon Red/Blue's S.S. Anne, crossed " +
-    "with the long-running joke that a Mac mini is the secret AI hardware " +
-    "trainers actually want. Apple has not announced or shipped a truck-sized " +
-    "Mac mini. Probably.",
+    "(fictional) 'truck on the docks' urban legend from a certain '90s " +
+    "monster-catching RPG, crossed with the long-running joke that a Mac " +
+    "mini is the secret AI hardware trainers actually want. Apple has not " +
+    "announced or shipped a truck-sized Mac mini. Probably.",
 };
 
 /* ─── Legendary registry ──────────────────────────────────────────── */

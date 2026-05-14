@@ -168,7 +168,7 @@ function App() {
               TOKEMON
             </span>
             <span className="mx-2 text-ink-600">·</span>
-            A fan-made Pokedex for AI models. Static dataset, no tracking.
+            A fan-made Modeldex for AI models. Static dataset, no tracking.
           </div>
           <div className="flex items-center gap-3">
             <a
@@ -197,7 +197,7 @@ function App() {
           uses your browser's <code className="text-ink-300">localStorage</code>{" "}
           for everything. We blew our database hosting budget on AI credits, so
           this is a static webpage. Your save lives only in this browser, on
-          this device. Clearing site data wipes your Pokedex.
+          this device. Clearing site data wipes your Modeldex.
         </p>
       </footer>
 
@@ -272,7 +272,7 @@ function Header({
           type="button"
           onClick={onHome}
           className="flex items-center gap-2.5 group"
-          aria-label="Back to Pokedex"
+          aria-label="Back to Modeldex"
         >
           <Logo />
           <div className="hidden sm:block">
