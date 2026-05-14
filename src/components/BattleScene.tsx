@@ -717,28 +717,36 @@ export function BattleScene({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-pop"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-pop"
       onClick={closeBattle}
       role="dialog"
       aria-label="Battle scene"
     >
       <div
-        className="relative w-full max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+        className="relative w-full max-w-4xl rounded-2xl border border-white/10 shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
           background:
             "linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #050810 100%)",
+          // Cap to viewport so the sticky footer (Continue button) stays
+          // reachable on phones, where the arena + log otherwise push it
+          // below the fold.
+          maxHeight: "calc(100dvh - 1rem)",
         }}
       >
         <button
           type="button"
           onClick={closeBattle}
           aria-label="Close"
-          className="absolute top-3 right-3 z-20 px-2 py-1 rounded-md text-xs font-semibold bg-white/[0.08] text-ink-100 hover:bg-white/[0.16]"
+          className="absolute top-3 right-3 z-30 px-2 py-1 rounded-md text-xs font-semibold bg-white/[0.08] text-ink-100 hover:bg-white/[0.16]"
         >
           ✕
         </button>
 
+        {/* Scrollable middle: header, arena, ledger, log. The footer below
+            stays sticky so "Continue →" / "View comparison →" is always
+            tappable on small screens. */}
+        <div className="flex-1 min-h-0 overflow-y-auto rounded-t-2xl">
         {/* Team headers */}
         <div className="grid grid-cols-2 gap-3 p-4 pb-0">
           <TeamBar
@@ -760,7 +768,7 @@ export function BattleScene({
         </div>
 
         {/* Arena */}
-        <div className="relative h-[340px] sm:h-[380px] mx-4 mt-4 rounded-xl overflow-hidden">
+        <div className="relative h-[200px] sm:h-[340px] md:h-[380px] mx-4 mt-4 rounded-xl overflow-hidden">
           <div
             className="absolute inset-0"
             style={{
@@ -901,15 +909,22 @@ export function BattleScene({
           </div>
         )}
 
-        {/* Footer actions */}
-        <div className="flex items-center justify-between gap-3 p-4 pt-0">
-          <div className="text-[11px] text-ink-500 flex items-center gap-1.5 flex-wrap">
+        </div>
+        {/* Footer actions — sticky at the bottom of the panel. */}
+        <div
+          className="flex items-center justify-between gap-3 p-3 sm:p-4 shrink-0 border-t border-white/10 rounded-b-2xl"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(5,8,16,0) 0%, rgba(5,8,16,0.85) 30%, #050810 100%)",
+          }}
+        >
+          <div className="hidden sm:flex text-[11px] text-ink-500 items-center gap-1.5 flex-wrap min-w-0">
             <TeamTypeChips team={left} />
             <span className="text-ink-600 mx-1">vs</span>
             <TeamTypeChips team={right} />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             {phase === "fight" && mode === "auto" && (
               <button
                 type="button"
@@ -922,7 +937,7 @@ export function BattleScene({
             <button
               type="button"
               onClick={isAdventure ? closeBattle : onShowDetails}
-              className="px-3 py-2 rounded-lg text-sm font-semibold bg-pokered-500 text-white hover:brightness-110"
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-pokered-500 text-white hover:brightness-110 shadow-lg shadow-pokered-500/30"
             >
               {isAdventure
                 ? phase === "winner"
@@ -1245,10 +1260,13 @@ function TeamSide({
 
   const containerStyle: React.CSSProperties = {
     position: "absolute",
-    bottom: isLeft ? "12%" : "44%",
-    [isLeft ? "left" : "right"]: "8%",
-    width: 180,
-    height: 150,
+    bottom: isLeft ? "8%" : "52%",
+    [isLeft ? "left" : "right"]: "4%",
+    // Cap width so the two sides can't bleed into each other on a narrow
+    // mobile arena. They're already on opposite diagonals; this keeps the
+    // sprites from overlapping at the center.
+    width: "min(180px, 38%)",
+    height: "min(150px, 44%)",
   };
 
   return (
