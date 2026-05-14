@@ -35,6 +35,12 @@ import { getNPCSprite, sp_player } from "./sprites";
 const TILE_SIZE = 32;
 const SPRITE_SIZE = 28;
 
+/** Soft minimum px size for the rendered Game Boy "screen" — below this the
+ *  map gets unreadable on tiny viewports. We let it shrink anyway because the
+ *  whole device still needs to fit, but never bigger than this. */
+const SCREEN_MAX_W = 480;
+const SCREEN_MAX_H = 432;
+
 /** Total battle-NPC count across all scenes, used by the HUD's defeated/total
  *  counter. Computed once at module load — adding a new scene auto-updates it. */
 const TOTAL_BATTLE_NPCS = Object.values(SCENES).reduce(
@@ -46,7 +52,7 @@ const MYTHOS_REQUIRED_NPC_IDS = SCENES.office.npcs
   .map((x) => x.id);
 const MYTHOS_UNLOCK_LINES = [
   "Every meetup trainer has seen what your modelmon can do.",
-  "(Mythical added to your Pokedex as #151: Claude Mythos.)",
+  "(Mythical added to your Modeldex as #151: Claude Mythos.)",
 ];
 const OAKLAND_WARNING_LINE =
   "Be careful, that direction leads to Oakland. Let's not go there.";
@@ -543,6 +549,50 @@ export function AdventureView({ onExit }: Props) {
     }
   }
 
+  /* ─── Unified actions (shared by keyboard + on-screen Game Boy pad) ── */
+
+  /** A-button semantics: advance dialogue, interact, confirm heal yes. */
+  const pressA = useCallback(() => {
+    if (dialogue) {
+      if (dialogue.kind === "heal-confirm" && dialogue.npcId) {
+        confirmHeal(dialogue.npcId, true);
+      } else {
+        advanceDialogue();
+      }
+      return;
+    }
+    if (battle || pickerOpen) return;
+    interact();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogue, battle, pickerOpen, interact]);
+
+  /** B-button semantics: cancel dialogue, decline heal, close picker. */
+  const pressB = useCallback(() => {
+    if (dialogue) {
+      if (dialogue.kind === "heal-confirm" && dialogue.npcId) {
+        confirmHeal(dialogue.npcId, false);
+      } else {
+        setDialogue(null);
+      }
+      return;
+    }
+    if (pickerOpen && partner) {
+      setPickerOpen(false);
+    }
+  }, [dialogue, pickerOpen, partner]);
+
+  /** D-pad helper used by both keyboard arrows and the on-screen pad. */
+  const pressDir = useCallback(
+    (dir: Facing) => {
+      if (dialogue || battle || pickerOpen) return;
+      if (dir === "up") tryMove(0, -1, "up");
+      else if (dir === "down") tryMove(0, 1, "down");
+      else if (dir === "left") tryMove(-1, 0, "left");
+      else tryMove(1, 0, "right");
+    },
+    [dialogue, battle, pickerOpen, tryMove]
+  );
+
   /* ─── Keyboard handling ───────────────────────────────────────── */
 
   useEffect(() => {
@@ -550,33 +600,15 @@ export function AdventureView({ onExit }: Props) {
       // Always allow Esc to close the picker / dialogue without exiting the
       // mode entirely; leaving the adventure is via the explicit Exit button.
       if (e.key === "Escape") {
-        if (dialogue) {
-          // For heal-confirm Esc means "No"
-          if (dialogue.kind === "heal-confirm" && dialogue.npcId) {
-            confirmHeal(dialogue.npcId, false);
-          } else {
-            setDialogue(null);
-          }
-          e.preventDefault();
-          return;
-        }
-        if (pickerOpen && partner) {
-          setPickerOpen(false);
-          e.preventDefault();
-          return;
-        }
+        pressB();
+        if (dialogue || (pickerOpen && partner)) e.preventDefault();
         return;
       }
 
       // Block movement while in dialogue/picker/battle
       if (dialogue || battle || pickerOpen) {
-        // Dialogue advance keys
         if (dialogue && (e.key === "Enter" || e.key === " " || e.key === "e" || e.key === "E")) {
-          if (dialogue.kind === "heal-confirm" && dialogue.npcId) {
-            confirmHeal(dialogue.npcId, true);
-          } else {
-            advanceDialogue();
-          }
+          pressA();
           e.preventDefault();
         } else if (
           dialogue &&
@@ -590,37 +622,36 @@ export function AdventureView({ onExit }: Props) {
         return;
       }
 
-      // Movement
       switch (e.key) {
         case "ArrowUp":
         case "w":
         case "W":
-          tryMove(0, -1, "up");
+          pressDir("up");
           e.preventDefault();
           break;
         case "ArrowDown":
         case "s":
         case "S":
-          tryMove(0, 1, "down");
+          pressDir("down");
           e.preventDefault();
           break;
         case "ArrowLeft":
         case "a":
         case "A":
-          tryMove(-1, 0, "left");
+          pressDir("left");
           e.preventDefault();
           break;
         case "ArrowRight":
         case "d":
         case "D":
-          tryMove(1, 0, "right");
+          pressDir("right");
           e.preventDefault();
           break;
         case "Enter":
         case " ":
         case "e":
         case "E":
-          interact();
+          pressA();
           e.preventDefault();
           break;
       }
@@ -629,62 +660,85 @@ export function AdventureView({ onExit }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tryMove, interact, dialogue, battle, pickerOpen, partner]);
+  }, [pressDir, pressA, pressB, dialogue, battle, pickerOpen, partner]);
 
   /* ─── Render ──────────────────────────────────────────────────── */
 
+  const mapPxW = MAP_W * TILE_SIZE;
+  const mapPxH = MAP_H * TILE_SIZE;
+
   return (
-    <div className="fixed inset-0 z-40 bg-black/90 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-5xl">
-        {/* HUD bar */}
-        <HUD
-          partner={partner}
-          partnerHP={save.partnerHP}
-          credits={save.credits}
-          defeated={save.defeated.length}
-          onExit={onExit}
-          onSwitchPartner={() => setPickerOpen(true)}
-          onReset={adventure.reset}
-        />
-
-        {/* Map viewport */}
-        <div
-          className="relative mx-auto mt-3 rounded-xl overflow-hidden ring-1 ring-white/10 shadow-2xl"
-          style={{
-            width: MAP_W * TILE_SIZE,
-            height: MAP_H * TILE_SIZE,
-            maxWidth: "100%",
-            background: "#0a0a14",
-            imageRendering: "pixelated",
-          }}
-        >
-          <MapGrid tiles={TILES} />
-          <NPCLayer npcs={scene.npcs} />
-          <Player
-            x={pos.x}
-            y={pos.y}
-            facing={facing}
-            onWater={TILES[pos.y]?.[pos.x] === "water"}
+    <div className="fixed inset-0 z-40 bg-black/95 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <GameBoyShell
+        screenAspectRatio={mapPxW / mapPxH}
+        onDir={pressDir}
+        onA={pressA}
+        onB={pressB}
+        onStart={() => setPickerOpen(true)}
+        onSelect={() => {
+          if (
+            window.confirm(
+              "Reset adventure progress? You'll lose credits, healed HP, and battle wins. (Mythos is unaffected.)"
+            )
+          ) {
+            adventure.reset();
+          }
+        }}
+        onExit={onExit}
+        statusBar={
+          <StatusBar
+            partner={partner}
+            partnerHP={save.partnerHP}
+            credits={save.credits}
+            defeated={save.defeated.length}
           />
-
-          {/* Floor labels for ambient flavor */}
-          <FloorLabels sceneId={sceneId} />
-
-          {/* Dialogue overlay */}
-          {dialogue && (
+        }
+        overlay={
+          dialogue ? (
             <DialogueBox
               dialogue={dialogue}
               onAdvance={advanceDialogue}
               onConfirmHeal={confirmHeal}
             />
-          )}
-        </div>
-
-        {/* Controls hint */}
-        <div className="mt-3 text-center text-[10px] font-mono uppercase tracking-[0.3em] text-ink-500">
-          WASD / arrow keys to move · E or Space to interact · Esc to close menus
-        </div>
-      </div>
+          ) : null
+        }
+      >
+        {(scaledW, scaledH) => {
+          const scale = Math.min(scaledW / mapPxW, scaledH / mapPxH);
+          // Center the scaled map within the available screen rect so the
+          // letterboxing (when the map's aspect doesn't perfectly match the
+          // bezel) lands as even black bars on each side.
+          const renderedW = mapPxW * scale;
+          const renderedH = mapPxH * scale;
+          const offsetX = Math.max(0, (scaledW - renderedW) / 2);
+          const offsetY = Math.max(0, (scaledH - renderedH) / 2);
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: offsetX,
+                top: offsetY,
+                width: mapPxW,
+                height: mapPxH,
+                background: "#0a0a14",
+                imageRendering: "pixelated",
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+              }}
+            >
+              <MapGrid tiles={TILES} />
+              <NPCLayer npcs={scene.npcs} />
+              <Player
+                x={pos.x}
+                y={pos.y}
+                facing={facing}
+                onWater={TILES[pos.y]?.[pos.x] === "water"}
+              />
+              <FloorLabels sceneId={sceneId} />
+            </div>
+          );
+        }}
+      </GameBoyShell>
 
       {pickerOpen && (
         <PartnerPicker
@@ -719,47 +773,35 @@ export function AdventureView({ onExit }: Props) {
 
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
-function HUD({
+/**
+ * Compact 1-line status strip rendered just above the Game Boy "screen".
+ * Fits on a phone — partner emblem, HP bar, credits, defeated counter.
+ */
+function StatusBar({
   partner,
   partnerHP,
   credits,
   defeated,
-  onExit,
-  onSwitchPartner,
-  onReset,
 }: {
   partner: AIModel | null;
   partnerHP: number;
   credits: number;
   defeated: number;
-  onExit: () => void;
-  onSwitchPartner: () => void;
-  onReset: () => void;
 }) {
   const hpPct = (partnerHP / MAX_HP) * 100;
   return (
-    <div className="flex items-center gap-3 flex-wrap rounded-xl bg-white/[0.04] ring-1 ring-inset ring-white/10 p-2.5">
-      <div className="flex items-center gap-2 pl-1 pr-3 border-r border-white/10">
-        {partner ? (
-          <ModelEmblem model={partner} size={32} animated={false} />
-        ) : (
-          <div className="w-8 h-8 rounded-md bg-white/10" />
-        )}
-        <div className="min-w-0">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-ink-500">
-            Partner
-          </div>
-          <div className="text-sm font-display font-bold text-white truncate max-w-[140px]">
-            {partner?.name ?? "—"}
-          </div>
-        </div>
+    <div className="flex items-center gap-2 sm:gap-3 px-2 py-1.5 text-[10px] font-mono text-ink-300 w-full">
+      {partner ? (
+        <ModelEmblem model={partner} size={22} animated={false} />
+      ) : (
+        <div className="w-[22px] h-[22px] rounded bg-white/10" />
+      )}
+      <div className="hidden xs:block min-w-0 truncate text-white font-display font-bold text-[11px] max-w-[100px]">
+        {partner?.name ?? "—"}
       </div>
-
-      <div className="flex items-center gap-2 px-2 border-r border-white/10">
-        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-ink-500">
-          HP
-        </div>
-        <div className="relative h-2 w-32 rounded-full bg-black/60 ring-1 ring-inset ring-white/5 overflow-hidden">
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 max-w-[180px]">
+        <span className="uppercase tracking-[0.15em] text-ink-500">HP</span>
+        <div className="relative h-1.5 flex-1 rounded-full bg-black/60 ring-1 ring-inset ring-white/5 overflow-hidden">
           <div
             className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
             style={{
@@ -773,59 +815,420 @@ function HUD({
             }}
           />
         </div>
-        <div className="text-[10px] font-mono text-ink-300 tabular-nums w-10">
+        <span className="tabular-nums text-ink-200 w-9 text-right">
           {Math.round(partnerHP)}/{MAX_HP}
-        </div>
+        </span>
       </div>
-
-      <div className="flex items-center gap-1 px-2 border-r border-white/10">
-        <span className="text-amber-300 text-lg leading-none">$</span>
+      <div className="flex items-center gap-0.5">
+        <span className="text-amber-300 leading-none">$</span>
         <span className="font-display font-black text-amber-200 tabular-nums">
           {credits < 1 ? credits.toFixed(2) : Math.floor(credits)}
         </span>
-        <span className="text-[10px] font-mono text-ink-500 ml-1">credits</span>
       </div>
-
-      <div className="flex items-center gap-1 px-2 border-r border-white/10">
-        <span className="text-[10px] font-mono text-ink-500">Defeated</span>
-        <span className="text-white font-mono tabular-nums">{defeated}</span>
-        <span className="text-ink-500 font-mono">/ {TOTAL_BATTLE_NPCS}</span>
+      <div className="hidden sm:flex items-center gap-1">
+        <span className="text-ink-500">DEF</span>
+        <span className="text-white tabular-nums">{defeated}</span>
+        <span className="text-ink-500">/ {TOTAL_BATTLE_NPCS}</span>
       </div>
+    </div>
+  );
+}
 
-      <div className="flex-1" />
+/* ─── Game Boy chassis ────────────────────────────────────────────── */
 
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onSwitchPartner}
-          className="text-[11px] px-2 py-1 rounded-md bg-white/[0.05] text-ink-200 hover:bg-white/[0.1]"
+interface GameBoyShellProps {
+  /** Width / height of the displayed map; used to letterbox the screen. */
+  screenAspectRatio: number;
+  statusBar: React.ReactNode;
+  /** Optional overlay (e.g. dialogue box) drawn over the LCD at native scale,
+   *  so it stays readable regardless of how much the inner map was shrunk. */
+  overlay?: React.ReactNode;
+  /** Renders the inner pixel content; receives the px size of the screen so
+   *  the caller can scale its fixed-size map to fit. */
+  children: (screenW: number, screenH: number) => React.ReactNode;
+  onDir: (dir: Facing) => void;
+  onA: () => void;
+  onB: () => void;
+  onStart: () => void;
+  onSelect: () => void;
+  onExit: () => void;
+}
+
+/**
+ * Wraps the adventure map in a chunky Game-Boy-style chassis with on-screen
+ * D-pad and A/B buttons. The "screen" auto-fits the available viewport,
+ * preserving the map's aspect ratio. Works on phones (full-bleed) and
+ * desktops (centered, capped to a comfortable handheld size).
+ */
+function GameBoyShell({
+  screenAspectRatio,
+  statusBar,
+  overlay,
+  children,
+  onDir,
+  onA,
+  onB,
+  onStart,
+  onSelect,
+  onExit,
+}: GameBoyShellProps) {
+  const screenRef = useRef<HTMLDivElement>(null);
+  const [screenSize, setScreenSize] = useState<{ w: number; h: number }>({
+    w: 320,
+    h: 288,
+  });
+
+  useEffect(() => {
+    if (!screenRef.current) return;
+    const el = screenRef.current;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setScreenSize({ w: rect.width, h: rect.height });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div
+      className="relative flex flex-col items-stretch w-full"
+      style={{
+        maxWidth: 460,
+        maxHeight: "100%",
+        padding: "10px",
+        borderRadius: "18px 18px 56px 18px",
+        background:
+          "linear-gradient(160deg, #d6d3c4 0%, #c4c0ad 40%, #a8a394 100%)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -3px 0 rgba(0,0,0,0.18), 0 24px 60px -16px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4)",
+      }}
+    >
+      {/* Top bezel: brand + leave button */}
+      <div className="flex items-center justify-between px-1.5 pb-1.5 shrink-0">
+        <div
+          className="font-display font-black text-[10px] tracking-[0.3em]"
+          style={{ color: "#3b2e1c" }}
         >
-          Switch partner
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (
-              window.confirm(
-                "Reset adventure progress? You'll lose credits, healed HP, and battle wins. (Mythos is unaffected.)"
-              )
-            ) {
-              onReset();
-            }
-          }}
-          className="text-[11px] px-2 py-1 rounded-md bg-white/[0.05] text-ink-200 hover:bg-white/[0.1]"
-        >
-          New game
-        </button>
+          TOKEMON·DEX
+        </div>
         <button
           type="button"
           onClick={onExit}
-          className="text-[11px] px-2 py-1 rounded-md bg-pokered-500 text-white hover:brightness-110"
+          aria-label="Leave adventure"
+          className="text-[9px] px-2 py-0.5 rounded-md font-mono uppercase tracking-[0.15em]"
+          style={{
+            background: "#7f1d1d",
+            color: "#fde68a",
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.4)",
+          }}
         >
-          Leave
+          ⏻ Leave
         </button>
       </div>
+
+      {/* Screen bezel (the dark gray plastic around the LCD) */}
+      <div
+        className="relative shrink-0"
+        style={{
+          background: "linear-gradient(180deg, #5b5648, #3a3528)",
+          borderRadius: 14,
+          padding: "8px 10px 12px 10px",
+          boxShadow:
+            "inset 0 2px 4px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Indicator strip above the LCD */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-1">
+            <span
+              className="block rounded-full"
+              style={{
+                width: 5,
+                height: 5,
+                background: "#dc2626",
+                boxShadow: "0 0 5px rgba(220,38,38,0.7)",
+              }}
+            />
+            <span
+              className="text-[7px] font-mono tracking-[0.2em] uppercase"
+              style={{ color: "#fbbf24" }}
+            >
+              POWER
+            </span>
+          </div>
+          <div className="flex-1 h-px bg-black/40" />
+          <div
+            className="text-[7px] font-mono tracking-[0.2em] uppercase"
+            style={{ color: "#9ca3af" }}
+          >
+            DOT-MATRIX·WITH·STEREO
+          </div>
+        </div>
+
+        {/* The LCD itself */}
+        <div
+          ref={screenRef}
+          className="relative overflow-hidden"
+          style={{
+            width: "100%",
+            aspectRatio: `${screenAspectRatio}`,
+            maxWidth: SCREEN_MAX_W,
+            maxHeight: SCREEN_MAX_H,
+            margin: "0 auto",
+            background: "#1a1726",
+            borderRadius: 4,
+            boxShadow:
+              "inset 0 0 0 2px #0a0a14, inset 0 0 14px rgba(0,0,0,0.6)",
+            imageRendering: "pixelated",
+          }}
+        >
+          {children(screenSize.w, screenSize.h)}
+          {overlay}
+        </div>
+      </div>
+
+      {/* Status strip just below the screen, above the controls */}
+      <div className="mt-1.5 mb-1 rounded-md bg-black/40 ring-1 ring-inset ring-black/40 shrink-0">
+        {statusBar}
+      </div>
+
+      {/* Control deck — D-pad + A/B (and Start/Select below) */}
+      <div className="shrink-0 flex flex-col">
+        <div className="flex items-center justify-between gap-3 px-1 pt-3 pb-1">
+          <DPadControl onDir={onDir} />
+          <ABButtons onA={onA} onB={onB} />
+        </div>
+
+        {/* Start / Select angled bar */}
+        <div className="flex items-center justify-center gap-3 mt-2 mb-1">
+          <PillButton label="SELECT" onClick={onSelect} />
+          <PillButton label="START" onClick={onStart} />
+        </div>
+
+        {/* Speaker grille */}
+        <div className="flex justify-end items-center gap-1.5 mt-1 pr-1">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: 18,
+                height: 2,
+                borderRadius: 2,
+                background:
+                  "linear-gradient(180deg, #3a3528 0%, #1f1c14 100%)",
+                transform: `rotate(-22deg)`,
+                opacity: 0.85 - i * 0.08,
+              }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function DPadControl({ onDir }: { onDir: (dir: Facing) => void }) {
+  const padBase: React.CSSProperties = {
+    background: "linear-gradient(180deg, #1f1f24, #0a0a0f)",
+    boxShadow:
+      "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.6), 0 2px 0 rgba(0,0,0,0.5)",
+  };
+  const SIZE = 96;
+  const ARM = SIZE / 3;
+
+  function arrow(dir: Facing): React.CSSProperties {
+    const base: React.CSSProperties = {
+      position: "absolute",
+      width: ARM,
+      height: ARM,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "rgba(255,255,255,0.65)",
+      fontSize: 14,
+      userSelect: "none",
+      WebkitUserSelect: "none",
+      touchAction: "manipulation",
+      cursor: "pointer",
+    };
+    if (dir === "up") return { ...base, top: 0, left: ARM };
+    if (dir === "down") return { ...base, bottom: 0, left: ARM };
+    if (dir === "left") return { ...base, left: 0, top: ARM };
+    return { ...base, right: 0, top: ARM };
+  }
+
+  function makeHandlers(dir: Facing) {
+    return {
+      onPointerDown: (e: React.PointerEvent) => {
+        e.preventDefault();
+        onDir(dir);
+      },
+    };
+  }
+
+  return (
+    <div
+      className="relative shrink-0"
+      style={{ width: SIZE, height: SIZE }}
+      aria-label="Directional pad"
+    >
+      {/* horizontal arm */}
+      <div
+        className="absolute rounded-md"
+        style={{
+          ...padBase,
+          left: 0,
+          right: 0,
+          top: ARM,
+          height: ARM,
+        }}
+      />
+      {/* vertical arm */}
+      <div
+        className="absolute rounded-md"
+        style={{
+          ...padBase,
+          top: 0,
+          bottom: 0,
+          left: ARM,
+          width: ARM,
+        }}
+      />
+      {/* center dot */}
+      <div
+        className="absolute rounded-sm"
+        style={{
+          left: ARM + ARM / 4,
+          top: ARM + ARM / 4,
+          width: ARM / 2,
+          height: ARM / 2,
+          background: "#0a0a0f",
+          boxShadow: "inset 0 1px 1px rgba(255,255,255,0.06)",
+        }}
+      />
+      {/* arrow hit-targets (transparent buttons rendered via styling) */}
+      <button
+        type="button"
+        aria-label="Up"
+        style={arrow("up")}
+        {...makeHandlers("up")}
+      >
+        ▲
+      </button>
+      <button
+        type="button"
+        aria-label="Down"
+        style={arrow("down")}
+        {...makeHandlers("down")}
+      >
+        ▼
+      </button>
+      <button
+        type="button"
+        aria-label="Left"
+        style={arrow("left")}
+        {...makeHandlers("left")}
+      >
+        ◀
+      </button>
+      <button
+        type="button"
+        aria-label="Right"
+        style={arrow("right")}
+        {...makeHandlers("right")}
+      >
+        ▶
+      </button>
+    </div>
+  );
+}
+
+function ABButtons({
+  onA,
+  onB,
+}: {
+  onA: () => void;
+  onB: () => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 shrink-0"
+      style={{ transform: "rotate(-22deg)", transformOrigin: "center" }}
+    >
+      <ActionButton label="B" onPress={onB} />
+      <ActionButton label="A" onPress={onA} />
+    </div>
+  );
+}
+
+function ActionButton({
+  label,
+  onPress,
+}: {
+  label: "A" | "B";
+  onPress: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        onPress();
+      }}
+      className="rounded-full font-display font-black select-none"
+      style={{
+        width: 46,
+        height: 46,
+        background:
+          "radial-gradient(circle at 35% 30%, #ef9aa9 0%, #b91c1c 60%, #5b0a13 100%)",
+        color: "rgba(255,255,255,0.92)",
+        fontSize: 16,
+        textShadow: "0 1px 1px rgba(0,0,0,0.5)",
+        boxShadow:
+          "inset 0 -2px 3px rgba(0,0,0,0.45), inset 0 2px 2px rgba(255,255,255,0.4), 0 3px 0 rgba(0,0,0,0.5)",
+        touchAction: "manipulation",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function PillButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className="select-none"
+      style={{
+        transform: "rotate(-22deg)",
+        background: "linear-gradient(180deg, #4a4538, #2c2a22)",
+        color: "rgba(255,255,255,0.55)",
+        padding: "4px 12px",
+        borderRadius: 999,
+        fontSize: 8,
+        fontFamily: "'Press Start 2P', monospace",
+        letterSpacing: 1.5,
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.6), 0 2px 0 rgba(0,0,0,0.5)",
+        touchAction: "manipulation",
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
