@@ -31,6 +31,12 @@ import { BattleScene } from "../components/BattleScene";
 import { ModelEmblem } from "../components/ModelEmblem";
 import { PixelSprite } from "../components/PixelSprite";
 import { getNPCSprite, sp_player } from "./sprites";
+import {
+  clarificationReply,
+  confirmReply,
+  greetingReply,
+  parseChatCommand,
+} from "./chatPilot";
 
 const TILE_SIZE = 32;
 const SPRITE_SIZE = 28;
@@ -87,6 +93,10 @@ export function AdventureView({ onExit }: Props) {
 
   // First-time entry: show partner picker if there's no saved partner
   const [pickerOpen, setPickerOpen] = useState<boolean>(!partner);
+
+  // Bottom-of-Game-Boy control deck. "pad" is the regular D-pad + A/B; "chat"
+  // swaps in the deeply unhelpful AI chat panel.
+  const [controlMode, setControlMode] = useState<"pad" | "chat">("pad");
 
   // Current scene + player position within that scene
   const [sceneId, setSceneId] = useState<SceneId>("office");
@@ -597,6 +607,18 @@ export function AdventureView({ onExit }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // If the user is typing in the AI-mode chat input (or any other text
+      // field), don't hijack their letters as movement keys.
+      const tgt = e.target as HTMLElement | null;
+      if (
+        tgt &&
+        (tgt.tagName === "INPUT" ||
+          tgt.tagName === "TEXTAREA" ||
+          tgt.isContentEditable)
+      ) {
+        return;
+      }
+
       // Always allow Esc to close the picker / dialogue without exiting the
       // mode entirely; leaving the adventure is via the explicit Exit button.
       if (e.key === "Escape") {
@@ -671,6 +693,8 @@ export function AdventureView({ onExit }: Props) {
     <div className="fixed inset-0 z-40 bg-black/95 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
       <GameBoyShell
         screenAspectRatio={mapPxW / mapPxH}
+        controlMode={controlMode}
+        onSetControlMode={setControlMode}
         onDir={pressDir}
         onA={pressA}
         onB={pressB}
@@ -839,6 +863,10 @@ function StatusBar({
 interface GameBoyShellProps {
   /** Width / height of the displayed map; used to letterbox the screen. */
   screenAspectRatio: number;
+  /** Which control deck to render below the screen — physical buttons or
+   *  the (deliberately bad) AI chat panel. */
+  controlMode: "pad" | "chat";
+  onSetControlMode: (mode: "pad" | "chat") => void;
   statusBar: React.ReactNode;
   /** Optional overlay (e.g. dialogue box) drawn over the LCD at native scale,
    *  so it stays readable regardless of how much the inner map was shrunk. */
@@ -862,6 +890,8 @@ interface GameBoyShellProps {
  */
 function GameBoyShell({
   screenAspectRatio,
+  controlMode,
+  onSetControlMode,
   statusBar,
   overlay,
   children,
@@ -905,14 +935,18 @@ function GameBoyShell({
           "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -3px 0 rgba(0,0,0,0.18), 0 24px 60px -16px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4)",
       }}
     >
-      {/* Top bezel: brand + leave button */}
-      <div className="flex items-center justify-between px-1.5 pb-1.5 shrink-0">
+      {/* Top bezel: brand + control-mode toggle + leave button */}
+      <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5 shrink-0">
         <div
           className="font-display font-black text-[10px] tracking-[0.3em]"
           style={{ color: "#3b2e1c" }}
         >
           TOKEMON·DEX
         </div>
+        <ControlModeToggle
+          mode={controlMode}
+          onChange={onSetControlMode}
+        />
         <button
           type="button"
           onClick={onExit}
@@ -995,37 +1029,48 @@ function GameBoyShell({
         {statusBar}
       </div>
 
-      {/* Control deck — D-pad + A/B (and Start/Select below) */}
-      <div className="shrink-0 flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-1 pt-3 pb-1">
-          <DPadControl onDir={onDir} />
-          <ABButtons onA={onA} onB={onB} />
-        </div>
+      {/* Control deck — either physical D-pad + A/B, or the deeply
+          unhelpful AI chat panel. */}
+      {controlMode === "pad" ? (
+        <div className="shrink-0 flex flex-col">
+          <div className="flex items-center justify-between gap-3 px-1 pt-3 pb-1">
+            <DPadControl onDir={onDir} />
+            <ABButtons onA={onA} onB={onB} />
+          </div>
 
-        {/* Start / Select angled bar */}
-        <div className="flex items-center justify-center gap-3 mt-2 mb-1">
-          <PillButton label="SELECT" onClick={onSelect} />
-          <PillButton label="START" onClick={onStart} />
-        </div>
+          {/* Start / Select angled bar */}
+          <div className="flex items-center justify-center gap-3 mt-2 mb-1">
+            <PillButton label="SELECT" onClick={onSelect} />
+            <PillButton label="START" onClick={onStart} />
+          </div>
 
-        {/* Speaker grille */}
-        <div className="flex justify-end items-center gap-1.5 mt-1 pr-1">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 18,
-                height: 2,
-                borderRadius: 2,
-                background:
-                  "linear-gradient(180deg, #3a3528 0%, #1f1c14 100%)",
-                transform: `rotate(-22deg)`,
-                opacity: 0.85 - i * 0.08,
-              }}
-            />
-          ))}
+          {/* Speaker grille */}
+          <div className="flex justify-end items-center gap-1.5 mt-1 pr-1">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: 18,
+                  height: 2,
+                  borderRadius: 2,
+                  background:
+                    "linear-gradient(180deg, #3a3528 0%, #1f1c14 100%)",
+                  transform: `rotate(-22deg)`,
+                  opacity: 0.85 - i * 0.08,
+                }}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <ChatControls
+          onDir={onDir}
+          onA={onA}
+          onB={onB}
+          onStart={onStart}
+          onSelect={onSelect}
+        />
+      )}
     </div>
   );
 }
@@ -1229,6 +1274,245 @@ function PillButton({
     >
       {label}
     </button>
+  );
+}
+
+/**
+ * Tiny segmented control in the top bezel that flips between the physical
+ * D-pad and the AI chat panel. Visually styled to look like a 1990s "MODE"
+ * switch on the back of a handheld.
+ */
+function ControlModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: "pad" | "chat";
+  onChange: (m: "pad" | "chat") => void;
+}) {
+  return (
+    <div
+      className="inline-flex items-center rounded-full overflow-hidden"
+      style={{
+        background: "linear-gradient(180deg, #2a2418, #1a1610)",
+        boxShadow:
+          "inset 0 1px 0 rgba(0,0,0,0.7), inset 0 -1px 0 rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.25)",
+      }}
+    >
+      {(["pad", "chat"] as const).map((m) => {
+        const active = mode === m;
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange(m)}
+            aria-pressed={active}
+            className="px-2 py-0.5 transition-colors"
+            style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: 7,
+              letterSpacing: 1.2,
+              color: active ? "#fde68a" : "rgba(253,230,138,0.45)",
+              background: active
+                ? "linear-gradient(180deg, #b45309, #7c2d12)"
+                : "transparent",
+              boxShadow: active
+                ? "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.5)"
+                : undefined,
+            }}
+          >
+            {m === "pad" ? "PAD" : "AI"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The "AI Mode" control deck. Replaces the D-pad and A/B with a chat input
+ * that only understands a tiny vocabulary ("left", "press A", etc.) and
+ * cheerfully misunderstands everything else.
+ *
+ * The whole thing is meant to be a deliberately bad UX gag — the LLM-themed
+ * app's most LLM-themed feature is a terrible LLM. Every command goes
+ * through the same `pressDir` / `pressA` / etc. handlers as the D-pad, so
+ * gameplay still works; it's just slower and more annoying.
+ */
+function ChatControls({
+  onDir,
+  onA,
+  onB,
+  onStart,
+  onSelect,
+}: {
+  onDir: (dir: Facing) => void;
+  onA: () => void;
+  onB: () => void;
+  onStart: () => void;
+  onSelect: () => void;
+}) {
+  type Msg = { id: number; from: "user" | "bot"; text: string };
+  const idRef = useRef(0);
+  const nextId = () => ++idRef.current;
+
+  const [messages, setMessages] = useState<Msg[]>(() => [
+    { id: nextId(), from: "bot", text: greetingReply() },
+  ]);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Always pin the message list to the latest reply.
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  function pushBot(text: string) {
+    setMessages((m) => [...m, { id: nextId(), from: "bot", text }]);
+  }
+
+  function send(raw: string) {
+    const text = raw.trim();
+    if (!text) return;
+    setMessages((m) => [...m, { id: nextId(), from: "user", text }]);
+    setInput("");
+
+    const cmd = parseChatCommand(text);
+    // Slight delay before the bot "responds" — it's a chatbot, it has to think.
+    window.setTimeout(() => {
+      if (!cmd) {
+        pushBot(clarificationReply());
+        return;
+      }
+      switch (cmd.type) {
+        case "dir":
+          onDir(cmd.dir);
+          break;
+        case "a":
+          onA();
+          break;
+        case "b":
+          onB();
+          break;
+        case "start":
+          onStart();
+          break;
+        case "select":
+          onSelect();
+          break;
+      }
+      pushBot(confirmReply(cmd));
+    }, 220);
+  }
+
+  return (
+    <div
+      className="shrink-0 flex flex-col mt-2 mb-1 mx-0.5"
+      style={{
+        // Bot-y dark panel. Sits where the D-pad/A-B usually live so the
+        // chassis height stays consistent when the user toggles modes.
+        background: "linear-gradient(180deg, #11141c, #060810)",
+        borderRadius: 12,
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.18)",
+        padding: 8,
+      }}
+    >
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span
+          className="block rounded-full"
+          style={{
+            width: 6,
+            height: 6,
+            background: "#10b981",
+            boxShadow: "0 0 6px rgba(16,185,129,0.7)",
+          }}
+        />
+        <span
+          className="text-[8px] font-mono tracking-[0.25em] uppercase"
+          style={{ color: "#94a3b8" }}
+        >
+          AI Mode (beta)
+        </span>
+        <span className="flex-1" />
+        <span
+          className="text-[7px] font-mono tracking-[0.2em] uppercase"
+          style={{ color: "rgba(148,163,184,0.6)" }}
+        >
+          GPT-0.0001
+        </span>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto pr-1 mb-1.5 space-y-1"
+        style={{ height: 88 }}
+      >
+        {messages.map((m) => (
+          <ChatBubble key={m.id} from={m.from} text={m.text} />
+        ))}
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+        className="flex items-center gap-1.5"
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="say 'left' or 'press A'…"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          className="flex-1 min-w-0 rounded-md px-2 py-1.5 text-[12px] font-mono text-white placeholder:text-ink-500 focus:outline-none"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        />
+        <button
+          type="submit"
+          className="rounded-md px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.15em]"
+          style={{
+            background:
+              "linear-gradient(180deg, #2563eb 0%, #1d4ed8 60%, #1e3a8a 100%)",
+            color: "white",
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.4)",
+          }}
+        >
+          Send
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function ChatBubble({ from, text }: { from: "user" | "bot"; text: string }) {
+  const isUser = from === "user";
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className="rounded-lg px-2 py-1 text-[11px] leading-snug max-w-[88%]"
+        style={{
+          background: isUser
+            ? "linear-gradient(180deg, #2563eb, #1d4ed8)"
+            : "rgba(255,255,255,0.06)",
+          color: isUser ? "white" : "#e6e9ef",
+          border: isUser ? "none" : "1px solid rgba(255,255,255,0.08)",
+          fontFamily: isUser
+            ? "'JetBrains Mono', monospace"
+            : "Inter, sans-serif",
+        }}
+      >
+        {text}
+      </div>
+    </div>
   );
 }
 
