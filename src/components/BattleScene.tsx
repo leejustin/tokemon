@@ -748,7 +748,7 @@ export function BattleScene({
             tappable on small screens. */}
         <div className="flex-1 min-h-0 overflow-y-auto rounded-t-2xl">
         {/* Team headers */}
-        <div className="grid grid-cols-2 gap-3 p-4 pb-0">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-2 sm:p-4 pb-0">
           <TeamBar
             team={left}
             hp={leftHP}
@@ -768,7 +768,7 @@ export function BattleScene({
         </div>
 
         {/* Arena */}
-        <div className="relative h-[200px] sm:h-[340px] md:h-[380px] mx-4 mt-4 rounded-xl overflow-hidden">
+        <div className="relative h-[150px] sm:h-[340px] md:h-[380px] mx-2 sm:mx-4 mt-2 sm:mt-4 rounded-xl overflow-hidden">
           <div
             className="absolute inset-0"
             style={{
@@ -1031,39 +1031,24 @@ function ManualActionPanel({
 }) {
   const padded = padMoves(moves);
   return (
-    <div className="m-4 mt-4 rounded-xl bg-white/[0.05] ring-1 ring-inset ring-white/10 p-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Battle log on the left */}
-        <div className="min-w-0">
-          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-ink-500 mb-1">
-            Battle Log
-          </div>
-          <div className="text-sm text-ink-200 leading-snug font-mono space-y-0.5 min-h-[64px]">
-            {log.slice(-3).map((line, i, arr) => (
-              <div
-                key={`${log.length}-${i}`}
-                className={i === arr.length - 1 ? "text-white" : "text-ink-300"}
-              >
-                {line}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Move picker on the right */}
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-ink-500 mb-1 flex items-center justify-between">
-            <span>
-              What will <span className="text-white">{active.name}</span> do?
+    <div className="mx-2 mt-2 sm:mx-4 sm:mt-4 rounded-xl bg-white/[0.05] ring-1 ring-inset ring-white/10 p-2 sm:p-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+        {/* Move picker — first on mobile so the call-to-action is visible
+            without scrolling. (sm:order-2 keeps the desktop "log left,
+            moves right" layout unchanged.) */}
+        <div className="sm:order-2">
+          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-ink-500 mb-1 flex items-center justify-between gap-2">
+            <span className="truncate">
+              <span className="text-white">{active.name}</span> · pick a move
             </span>
             {waiting && (
-              <span className="text-amber-300 normal-case tracking-normal">
-                {rivalName} is thinking…
+              <span className="text-amber-300 normal-case tracking-normal shrink-0">
+                {rivalName} thinking…
               </span>
             )}
           </div>
           {canPick && (
-            <div className="text-[10px] font-mono text-ink-500 mb-1">
+            <div className="text-[10px] font-mono text-ink-500 mb-1 hidden sm:block">
               Keyboard: 1-4 to move · arrows/WASD + Enter
             </div>
           )}
@@ -1111,6 +1096,35 @@ function ManualActionPanel({
                 </div>
               )
             )}
+          </div>
+        </div>
+
+        {/* Battle log — comes second on mobile so it doesn't push the move
+            buttons off-screen, but stays in its original left column on
+            desktop. We only show 1 line on mobile and the last 3 on desktop. */}
+        <div className="min-w-0 sm:order-1">
+          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-ink-500 mb-1 hidden sm:block">
+            Battle Log
+          </div>
+          <div className="text-[12px] sm:text-sm text-ink-200 leading-snug font-mono space-y-0.5 sm:min-h-[64px]">
+            {log.slice(-1).map((line, i) => (
+              <div
+                key={`mob-${log.length}-${i}`}
+                className="text-white truncate sm:hidden"
+              >
+                {line}
+              </div>
+            ))}
+            {log.slice(-3).map((line, i, arr) => (
+              <div
+                key={`${log.length}-${i}`}
+                className={`hidden sm:block ${
+                  i === arr.length - 1 ? "text-white" : "text-ink-300"
+                }`}
+              >
+                {line}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -1358,11 +1372,17 @@ function Combatant({
       {phase === "intro" || phase === "mode-select" ? (
         <Pokeball size={50} delay={delay} />
       ) : (
-        <ModelEmblem
-          model={model}
-          size={baseSize}
-          animated={phase === "ready" || phase === "fight"}
-        />
+        // On phones the arena is intentionally short to keep the move
+        // picker above the fold, so we scale the sprite down via CSS
+        // (ModelEmblem only takes a fixed numeric size). Desktop renders
+        // the sprite at native size.
+        <div className="scale-[0.65] sm:scale-100 origin-center">
+          <ModelEmblem
+            model={model}
+            size={baseSize}
+            animated={phase === "ready" || phase === "fight"}
+          />
+        </div>
       )}
     </div>
   );
@@ -1474,22 +1494,23 @@ function BurnLedger({
   const colossusInPlay = [...left, ...right].some(isColossus);
   return (
     <div
-      className={`mx-4 mt-3 rounded-xl ring-1 ring-inset p-3 ${
+      className={`mx-2 sm:mx-4 mt-2 sm:mt-3 rounded-xl ring-1 ring-inset px-3 py-2 sm:p-3 ${
         colossusInPlay
           ? "bg-rose-500/[0.08] ring-rose-400/30"
           : "bg-amber-500/[0.06] ring-amber-400/20"
       }`}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-2 min-w-0">
           <span
-            className={`text-[10px] font-mono uppercase tracking-[0.25em] ${
+            className={`text-[10px] font-mono uppercase tracking-[0.25em] shrink-0 ${
               colossusInPlay ? "text-rose-300" : "text-amber-300"
             }`}
           >
-            {colossusInPlay ? "🔥 Cash Incinerator" : "💸 Tokens Burned"}
+            {colossusInPlay ? "🔥 Cash Incinerator" : "💸 Burned"}
           </span>
-          <span className="text-[10px] font-mono text-ink-500">
+          {/* Simulation footnote is desktop-only — too noisy on a phone. */}
+          <span className="hidden sm:inline text-[10px] font-mono text-ink-500">
             (simulation · {formatTokens(TOKENS_PER_ATTACK_IN)} in /{" "}
             {formatTokens(TOKENS_PER_ATTACK_OUT)} out per swing
             {colossusInPlay ? ` · ${COLOSSUS_BURN_MULT}× when Colossus attacks` : ""}
@@ -1497,14 +1518,16 @@ function BurnLedger({
           </span>
         </div>
         <div
-          className={`text-lg font-display font-black tabular-nums ${
+          className={`text-base sm:text-lg font-display font-black tabular-nums ${
             colossusInPlay ? "text-rose-300" : "text-amber-300"
           }`}
         >
           {formatUSD(total)}
         </div>
       </div>
-      <div className="mt-1.5 grid grid-cols-2 gap-3 text-[11px] font-mono">
+      {/* Per-team breakdown is desktop-only — phone keeps just the total
+          to leave room for the move buttons above the fold. */}
+      <div className="hidden sm:grid mt-1.5 grid-cols-2 gap-3 text-[11px] font-mono">
         <div className="text-ink-300">
           <span className="text-ink-500">{teamName(left)}: </span>
           <span className="text-white tabular-nums">
