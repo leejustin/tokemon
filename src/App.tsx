@@ -326,7 +326,7 @@ function Header({
                   : "bg-white/[0.05] text-white border-white/10 hover:bg-white/[0.1]"
               }`}
           >
-            <span aria-hidden>📊</span>
+            <CompareIcon />
             <span className="hidden sm:inline">Compare</span>
           </button>
           <button
@@ -341,7 +341,7 @@ function Header({
                   : "bg-pokered-500 text-white border-pokered-400 hover:brightness-110"
               }`}
           >
-            <span aria-hidden>⚔</span>
+            <BattleIcon />
             <span className="hidden sm:inline">Battle</span>
             <span
               className={`inline-flex items-center justify-center text-[10px] font-mono rounded-full w-5 h-5 ${
@@ -354,6 +354,60 @@ function Header({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Compare button icon: three ascending bars in a clean stroke style — reads
+ * as "side-by-side comparison" without resorting to a generic emoji.
+ */
+function CompareIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 20V11" />
+      <path d="M12 20V4" />
+      <path d="M18 20v-7" />
+      <path d="M3 20h18" />
+    </svg>
+  );
+}
+
+/**
+ * Battle button icon: a pair of crossed swords drawn in stroke. Same visual
+ * weight as the search/compare icons so the header looks consistent.
+ */
+function BattleIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+      <path d="M13 19l6-6" />
+      <path d="M16 16l4 4" />
+      <path d="M19 21l2-2" />
+      <path d="M9.5 17.5L21 6V3h-3L6.5 14.5" />
+      <path d="M11 19l-6-6" />
+      <path d="M8 16l-4 4" />
+      <path d="M5 21l-2-2" />
+    </svg>
   );
 }
 

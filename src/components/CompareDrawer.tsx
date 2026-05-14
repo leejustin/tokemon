@@ -81,7 +81,7 @@ export function CompareDrawer({
                   : "bg-white/[0.06] text-white hover:bg-white/[0.12]"
               }`}
           >
-            <span aria-hidden>📊</span>
+            <CompareIcon />
             <span className="hidden sm:inline">Compare</span>
           </button>
           <button
@@ -102,12 +102,58 @@ export function CompareDrawer({
                   : "bg-pokered-500 text-white hover:brightness-110"
               }`}
           >
-            <span aria-hidden>⚔</span>
+            <BattleIcon />
             <span className="hidden sm:inline">Battle</span>
             <span className="text-[10px] font-mono opacity-80">{models.length}</span>
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function CompareIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 20V11" />
+      <path d="M12 20V4" />
+      <path d="M18 20v-7" />
+      <path d="M3 20h18" />
+    </svg>
+  );
+}
+
+function BattleIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+      <path d="M13 19l6-6" />
+      <path d="M16 16l4 4" />
+      <path d="M19 21l2-2" />
+      <path d="M9.5 17.5L21 6V3h-3L6.5 14.5" />
+      <path d="M11 19l-6-6" />
+      <path d="M8 16l-4 4" />
+      <path d="M5 21l-2-2" />
+    </svg>
   );
 }
